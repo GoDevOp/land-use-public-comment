@@ -1,13 +1,15 @@
 # land-use-public-comment
 **from [Esri's ArcGIS for Local Government team](http://resources.arcgis.com/en/communities/local-government/)**
 
-The Land Use Public Comment application is a configuration of ArcGIS Server and a JavaScript application that allows the general public and other interested parties to comment on proposed land use cases being heard in their Local Government.  It provides 24/7 access to your government organization and typically supplements statutory public notice requirements. In local governments that are using technology during their planning commission, zoning board of appeals, or governing bodyâ€™s meetings, the online comments can be viewed during the hearing and at the same time residents are commenting in person on the proposal. If technology is not present, a manual report can be created and routed to appropriate staff.
+The Land Use Public Comment application is a configuration of ArcGIS Server and a JavaScript application that allows the general public and other interested parties to comment on proposed land use cases being heard in their Local Government.  It provides 24/7 access to your government organization and typically supplements statutory public notice requirements. In local governments that are using technology during their planning commission, zoning board of appeals, or governing body’s meetings, the online comments can be viewed during the hearing and at the same time residents are commenting in person on the proposal. If technology is not present, a manual report can be created and routed to appropriate staff.
 
 [Try the Land Use Public Comment application](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
 
+![Image of Land Use Public Comment application](https://raw.github.com/Esri/park-and-recreation-finder/master/land-use-public-comment.png "Land Use Public Comment application")
+
 ## Features
 
-* Review proposed land use case information and plans 
+* Review proposed land use case information and plans
 * Submit comments or concerns to the local government
 * Share with social media
 
@@ -69,4 +71,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 A copy of the license is available in the repository's
-[license.txt](https://github.com/Esri/land-use-public-comment/blob/master/license.txt) file.
+[license.txt](https://raw.github.com/Esri/land-use-public-comment/master/license.txt) file.
