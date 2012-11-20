@@ -5,7 +5,7 @@ The Land Use Public Comment application is a configuration of ArcGIS Server and 
 
 [Try the Land Use Public Comment application](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
 
-![Image of Land Use Public Comment application](https://raw.github.com/Esri/park-and-recreation-finder/master/land-use-public-comment.png "Land Use Public Comment application")
+![Image of Land Use Public Comment application](https://raw.github.com/Esri/land-use-public-comment/master/land-use-public-comment.png "Land Use Public Comment application")
 
 ## Features
 
