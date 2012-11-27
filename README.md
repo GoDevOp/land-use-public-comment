@@ -1,5 +1,4 @@
 # land-use-public-comment
-**from [Esri's ArcGIS for Local Government team](http://resources.arcgis.com/en/communities/local-government/)**
 
 The Land Use Public Comment application is a configuration of ArcGIS Server and a JavaScript application that allows the general public and other interested parties to comment on proposed land use cases being heard in their Local Government.  It provides 24/7 access to your government organization and typically supplements statutory public notice requirements. In local governments that are using technology during their planning commission, zoning board of appeals, or governing body's meetings, the online comments can be viewed during the hearing and at the same time residents are commenting in person on the proposal. If technology is not present, a manual report can be created and routed to appropriate staff.
 
@@ -38,6 +37,8 @@ on the ArcGIS Resource Center can guide you in the setup and configuration of th
 * Microsoft ASP.NET Framework 4.0 available from the [Microsoft website](http://www.microsoft.com/en-us/download/details.aspx?id=17851)
 
 ## Resources
+
+Learn more about Esri's [ArcGIS for Local Government maps and apps](http://resources.arcgis.com/en/communities/local-government/).
 
 Additional [information and sample data](http://www.arcgis.com/home/item.html?id=0d11c03269f0428f83fd346b255c94c8)
 are available for the application.
