@@ -76,3 +76,6 @@ limitations under the License.
 
 A copy of the license is available in the repository's
 [license.txt](https://raw.github.com/Esri/land-use-public-comment/master/license.txt) file.
+
+[](Esri Tags: Local Government land use public comment)
+[](Esri Language: JavaScript)
