@@ -1,5 +1,5 @@
 ﻿/** @license
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,33 +17,26 @@
 dojo.provide("js.config");
 dojo.declare("js.config", null, {
 
-    // This file contains various configuration settings for "Public Comments" template
+    // This file contains various configuration settings for "Land Use Public Comment" template
     //
     // Use this file to perform the following:
     //
-    // 1.  Specify application title                  - [ Tag(s) to look for: ApplicationName ]
+    // 1.  Specify application name                   - [ Tag(s) to look for: ApplicationName ]
     // 2.  Set path for application icon              - [ Tag(s) to look for: ApplicationIcon ]
     // 3.  Set splash screen message                  - [ Tag(s) to look for: SplashScreenMessage ]
     // 4.  Set URL for help page                      - [ Tag(s) to look for: HelpURL ]
-    //
-    // 5.  Specify URLs for basemaps                  - [ Tag(s) to look for: BaseMapLayers ]
+    // 5.  Specify URLs for base maps                  - [ Tag(s) to look for: BaseMapLayers ]
     // 6.  Set initial map extent                     - [ Tag(s) to look for: DefaultExtent ]
-
-    // 7.  Specify URL(s) for operational layers      - [ Tag(s) to look for: DevPlanLayer,CommentLayer]
-    // 8.  Customize data formatting                  - [ Tag(s) to look for: ShowNullValueAs]
-
-    //
-    // 9.  Customize address search settings          - [ Tag(s) to look for: LocatorURL, LocatorDefaultAddress, LocatorMarkupSymbolPath]
-    //
-    // 10. Set URL for geometry service               - [ Tag(s) to look for: GeometryService ]
-    //
-    // 11. Customize info-Window settings             - [ Tag(s) to look for: InfoWindowHeader ]
-    // 11a.Customize info-Popup settings              - [ Tag(s) to look for: InfoPopupFieldsCollection]
-    //
-    // 12. Set the default comment                    - [ Tag(s) to look for: DefaultCmnt]
-    // 13. Customize the renderer                     - [  Tag(s) to look for: CustomRenderer, RendererColor]
-    // 14. Specify URLs for map sharing               - [ Tag(s) to look for: FacebookShareURL, TwitterShareURL, ShareByMailLink ]
-    // 14a.In case of changing the TinyURL service
+    // 7.  Or for using map services:
+    // 7a. Specify URLs for operational layers        - [ Tag(s) to look for: serviceRequestLayerURL, serviceRequestmobileLayerURL, serviceRequestCommentsLayerURL ]
+    // 7b. Customize info-Window settings             - [ Tag(s) to look for: InfoWindowHeader, InfoWindowContent ]
+    // 7c. Customize info-Popup settings              - [ Tag(s) to look for: infoWindowData, ShowCommentsTab ]
+    // 7d. Customize info-Popup size                  - [ Tag(s) to look for: InfoPopupHeight, InfoPopupWidth ]
+    // 7e. Customize data formatting                  - [ Tag(s) to look for: ShowNullValueAs, FormatDateAs ]
+    // 8. Customize address search settings           - [ Tag(s) to look for: LocatorSettings ]
+    // 9. Set URL for geometry service                - [ Tag(s) to look for: GeometryService ]
+    // 10. Specify URLs for map sharing               - [ Tag(s) to look for: FacebookShareURL, TwitterShareURL, ShareByMailLink ]
+    // 10a.In case of changing the TinyURL service
     //     Specify URL for the new service            - [ Tag(s) to look for: MapSharingOptions (set TinyURLServiceURL, TinyURLResponseAttribute) ]
 
 
@@ -54,144 +47,209 @@ dojo.declare("js.config", null, {
     ApplicationName: "Land Use Public Comment",
 
     // Set application icon path
-    ApplicationIcon: "images/imgapplication.png",
+    ApplicationIcon: "images/logo.png",
 
     // Set splash window content - Message that appears when the application starts
     SplashScreenMessage: "<b>Land Use Public Comments</b> <br/> <hr/> <br/>The <b>Land Use Public Comment</b> application allows the general public and other interested parties to comment on proposed land use cases being heard in their Local Government. It provides 24x7 access to your government organization and supplements statutory public notice requirements. <br/> <br/> You can review pending land use cases, submit public comment and finally review comments from other members of the community to see what is being said about land use activities in your community. <br/> <br /> <b>Contact Us By Phone:</b> <br/> <br/> Naperville Planning Department <br/> Phone: (555) 555-1212 <br/> Open: 8:00 am - 4:00 pm<br/><hr/> <br/>",
 
     // Set URL of help page/portal
-    HelpURL: "help.html",
+    HelpURL: "help.htm",
 
     // ------------------------------------------------------------------------------------------------------------------------
     // BASEMAP SETTINGS
     // ------------------------------------------------------------------------------------------------------------------------
     // Set baseMap layers
-    // Please note: All basemaps need to use the same spatial reference. By default, on application start the first basemap will be loaded
-    BaseMapLayers: [
-                       {
-                           Key: "parcelMap",
-                           ThumbnailSource: "images/parcelmap.png",
-                           Name: "Parcel Map",
-                           MapURL: "http://localgovtemplates.esri.com/ArcGIS/rest/services/ParcelPublicAccess/MapServer"
-                       },
-                       {
-                           Key: "hybridMap",
-                           ThumbnailSource: "images/imageryhybrid.png",
-                           Name: "Hybrid Map",
-                           MapURL: "http://localgovtemplates.esri.com/ArcGIS/rest/services/ImageryHybrid/MapServer"
-                       }
-                   ],
+    // Please note: All base maps need to use the same spatial reference. By default, on application start the first basemap will be loaded
+    BaseMapLayers:
+          [
+                    {
+                        Key: "parcelMap",
+                        ThumbnailSource: "images/parcelmap.png",
+                        Name: "Parcel Map",
+                        MapURL: "http://localgovtemplates.esri.com/ArcGIS/rest/services/ParcelPublicAccess/MapServer"
+                    },
+                    {
+                        Key: "hybridMap",
+                        ThumbnailSource: "images/imageryhybrid.png",
+                        Name: "Hybrid Map",
+                        MapURL: "http://localgovtemplates.esri.com/ArcGIS/rest/services/ImageryHybrid/MapServer"
+                    }
+          ],
 
-    // Initial map extent. Use comma (,) to separate values and dont delete the last comma
+    // Initial map extent. Use comma (,) to separate values and don't delete the last comma
     DefaultExtent: "-9820540.250415744,5123891.2880908195,-9808654.292517414,5130751.511379406",
 
-	// ------------------------------------------------------------------------------------------------------------------------
-	// OPERATIONAL DATA SETTINGS
-
-	// Configure operational layers
-	DevPlanLayer: "http://localgovtemplates2.esri.com/ArcGIS/rest/services/Planning/LandUseCases/FeatureServer/0",
-	CommentLayer: "http://localgovtemplates2.esri.com/ArcGIS/rest/services/Planning/LandUseCases/FeatureServer/1",
-
-    CaseID: "CASEID",
-    CaseName: "CASENAME",
-    Comments: "COMMENTS",
-    HearingDate: "HEARINGDT",
-    Submitdate: "SUBMITDATE",
-
+    // ------------------------------------------------------------------------------------------------------------------------
+    // OPERATIONAL DATA SETTINGS
     // ------------------------------------------------------------------------------------------------------------------------
 
-	// Set string value to be shown for null or blank values
-    ShowNullValueAs: "Not Available",
+    // Configure operational layers:
+    DevPlanLayerURL:
+          {
+              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/0",
+              PrimaryKeyForCase: "${CASEID}"
+          },
+    DevPlanMobileLayerURL:
+          {
+              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/0",
+              PrimaryKeyForCase: "${CASEID}"
+          },
 
-	// ------------------------------------------------------------------------------------------------------------------------
-	// ADDRESS SEARCH SETTINGS
-	// ------------------------------------------------------------------------------------------------------------------------
-    // Set Locator service URL
-    LocatorURL: "http://tasks.arcgisonline.com/ArcGIS/rest/services/Locators/TA_Address_NA_10/GeocodeServer",
+    PublicCommentsLayerURL:
+          {
+              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/1",
+              PrimaryKeyForComments: "${CASEID}"
+          },
 
-    // Set Locator fields (fields to be used for searching)
-    LocatorFields: "SingleLine",
-
-    // Set default address to search
-    LocatorDefaultAddress: "971 Sylvan Cir,Naperville,IL,60540",
-
-    // Set pushpin image path
-    LocatorMarkupSymbolPath: "images/pushpin.png",
-
-	// ------------------------------------------------------------------------------------------------------------------------
-	// GEOMETRY SERVICE SETTINGS
-	// ------------------------------------------------------------------------------------------------------------------------
-    // Set geometry service URL
-    GeometryService: "http://localgovtemplates2.esri.com/ArcGIS/rest/services/Geometry/GeometryServer",
 
     // ------------------------------------------------------------------------------------------------------------------------
     // INFO-WINDOW SETTINGS
     // ------------------------------------------------------------------------------------------------------------------------
+
     // Info-window is a small, two line popup that gets displayed on selecting a feature
     // Set Info-window title. Configure this with text/fields
-    InfoWindowHeader: "CASENAME",
+    InfoWindowHeader: "${CASENAME}",
+
+    // Choose content/fields for the info window
+    InfoWindowContent: "${APPLICANT}",
 
     // ------------------------------------------------------------------------------------------------------------------------
     // INFO-POPUP SETTINGS
     // ------------------------------------------------------------------------------------------------------------------------
+
     // Info-popup is a popup dialog that gets displayed on selecting a feature
     // Set the content to be displayed on the info-Popup. Define labels, field values, field types and field formats
-    InfoPopupFieldsCollection:
-         [
-              {
-                  DisplayText: "",
-                  FieldName: "CASEID"
-              },
-              {
-                  DisplayText: "",
-                  FieldName: "CASENAME"
-              },
-              {
-                  DisplayText: "",
-                  FieldName: "APPLICANT"
-              },
-              {
-                  DisplayText: "",
-                  FieldName: "CASEDESC"
-              },
-              {
-                 DisplayText: "",
-                 FieldName: "CASETYPE"
-              },
-              {
-                 DisplayText: "",
-                 FieldName: "CASESTATUS"
-              },
-              {
-                 DisplayText: "",
-                 FieldName: "HEARINGDT"
-              },
-              {
-                 DisplayText: "",
-                 FieldName: "HEARINGLOC"
-              }
-         ],
-    //Set the default comment to be displayed
-    DefaultCmnt: "Please Submit Your Comments",
+    InfoWindowData:
+          [
+                    {
+                        DisplayText: "Case ID:",
+                        AttributeValue: "${CASEID}"
+                    },
+                    {
+                        DisplayText: "Case Name:",
+                        AttributeValue: "${CASENAME}"
+                    },
+                    {
+                        DisplayText: "Applicant:",
+                        AttributeValue: "${APPLICANT}"
+                    },
+                    {
+                        DisplayText: "Description:",
+                        AttributeValue: "${CASEDESC}"
+                    },
+                    {
+                        DisplayText: "Case Type:",
+                        AttributeValue: "${CASETYPE}"
+                    },
+                    {
+                        DisplayText: "Case Status:",
+                        AttributeValue: "${CASESTATUS}"
+                    },
+                    {
+                        DisplayText: "Hearing Date:",
+                        AttributeValue: "${HEARINGDT}"
+                    },
+                    {
+                        DisplayText: "Hearing Location:",
+                        AttributeValue: "${HEARINGLOC}"
+                    }
+          ],
 
-    //Set the custom renderer
-    CustomRenderer: false,
+    // Set display name for attachment
+    AttachmentDisplayName: "Attachment",
 
-    //Set the custom renderer color
+    // Set this to true to show "Comments" tab in the info-Popup
+    ShowCommentsTab: true,
+
+    // Set this message for comments
+    ShowCommentsMessage: "Thank you for your feedback.",
+
+    // Set size of the info-Popup - select maximum height and width in pixels (not applicable for tabbed info-Popup)
+    //minimum height should be 310 for the info-popup in pixels
+    InfoPopupHeight: 310,
+
+    // Minimum width should be 330 for the info-popup in pixels
+    InfoPopupWidth: 330,
+
+    // Set string value to be shown for null or blank values
+    ShowNullValueAs: "N/A",
+
+    // Set date format
+    FormatDateAs: "MMM dd, yyyy",
+
+    // ------------------------------------------------------------------------------------------------------------------------
+    // ADDRESS SEARCH SETTINGS
+    // ------------------------------------------------------------------------------------------------------------------------
+
+    // Set locator settings such as locator symbol, size, zoom level, display fields, match score
+    LocatorSettings: {
+        DefaultLocatorSymbol: "images/RedPushpin.png",
+        MarkupSymbolSize: { width: 35, height: 35 },
+        Locators: [
+                {
+                    DisplayText: "Address",
+                    DefaultValue: "1848 N Mill St Naperville IL 60563",
+                    LocatorParamaters: ["SingleLine"],
+                    LocatorURL: "http://tasks.arcgisonline.com/ArcGIS/rest/services/Locators/TA_Address_NA_10/GeocodeServer",
+                    CandidateFields: "Loc_name, Score, Match_addr",
+                    DisplayField: "${Match_addr}",
+                    ZoomLevel: 7,
+                    AddressMatchScore: 80,
+                    LocatorFieldName: 'Loc_name',
+                    LocatorFieldValues: ["US_Streets", "US_StreetName"]
+                },
+                {
+                    DisplayText: "Case Name",
+                    DefaultValue: "Naperville",
+                    QueryString: "CASENAME like '%${0}%'",
+                    DisplayField: "${CASENAME}"
+                }
+            ]
+    },
+
+    // Set the default comment to be displayed
+    DefaultCmnt: "No comment available.",
+
+    // Set the custom renderer
+    CustomRenderer: true,
+
+    // Set the custom renderer color
     RendererColor: "#1C86EE",
+
+    // Define the database field names
+    // Note: DateFieldName refers to a date database field.
+    // All other attributes refer to text database fields.
+    DatabaseFields: {
+        CaseIdFieldName: "CASEID",
+        CommentsFieldName: "COMMENTS",
+        DateFieldName: "SUBMITDT"
+    },
+
+    // Set info-pop fields for adding and displaying comment
+    CommentsInfoPopupFieldsCollection: {
+        Submitdate: "${SUBMITDT}",
+        Comments: "${COMMENTS}"
+    },
+
+    // ------------------------------------------------------------------------------------------------------------------------
+    // GEOMETRY SERVICE SETTINGS
+    // ------------------------------------------------------------------------------------------------------------------------
+
+    // Set geometry service URL
+    GeometryService: "http://localgovtemplates2.esri.com/ArcGIS/rest/services/Geometry/GeometryServer",
 
     // ------------------------------------------------------------------------------------------------------------------------
     // SETTINGS FOR MAP SHARING
     // ------------------------------------------------------------------------------------------------------------------------
+
     // Set URL for TinyURL service, and URLs for social media
     MapSharingOptions:
-    {
-        TinyURLServiceURL: "http://api.bit.ly/v3/shorten?login=esri&apiKey=R_65fd9891cd882e2a96b99d4bda1be00e&uri=${0}&format=json",
-        TinyURLResponseAttribute: "data.url",
-
-         FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comments%20Map",
-         TwitterShareURL: "http://twitter.com/home/?status=Public%20Comments%20Map ${0}",
-         MailShare: "mailto:%20?subject=checkout%20this%20Public%20Comments%20map!&body=${0}"
-    }
+          {
+              TinyURLServiceURL: "http://api.bit.ly/v3/shorten?login=esri&apiKey=R_65fd9891cd882e2a96b99d4bda1be00e&uri=${0}&format=json",
+              TinyURLResponseAttribute: "data.url",
+              FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comment",
+              TwitterShareURL: "http://twitter.com/home/?status=Public%20Comment ${0}",
+              ShareByMailLink: "mailto:%20?subject=See%20this%20Public%20Comment%20map!&body=${0}"
+          }
 
 });

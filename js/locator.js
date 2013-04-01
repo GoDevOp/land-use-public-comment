@@ -1,5 +1,5 @@
 ﻿/** @license
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,227 +14,323 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
-var searchAddress;
+//Get candidate results for searched address/case name
+function LocateAddress() {
+    var thisSearchTime = lastSearchTime = (new Date()).getTime();
 
-//Function for locating address
-function Locate() {
-    if (dojo.byId('imgGPS').src = "images/bluegps.png") {
-        dojo.byId('imgGPS').src = "images/imggeolocation.png";
-        var gpsButton = dijit.byId('btnGeolocation');
-        gpsButton.attr("checked", false);
-    }
-    //Hide Basemap control if open
-    var nodeBaseMap = dojo.byId('divBaseMapTitleContainer');
-    if (nodeBaseMap.style.display != "none") {
-        HideBaseMapWidget();
-    }
-
-    //Hide Sharing control if open
-    var nodeShare = dojo.byId('divAppContainer');
-
-    if (nodeShare.style.display != "none") {
-        ToggleApplication();
-    }
-
-    var node = dojo.byId('divAddressContainer');
-    if (node.style.display != "none") {
-        WipeOutControl(node, 100);
-    }
-
-    if (dojo.byId('rbAddress').checked) {
-        var searchAdd = dojo.byId("txtAddress").value.trim();
-        if (searchAdd == '') {
-            ShowDialog('Locator Error', messages.getElementsByTagName("addressToLocate")[0].childNodes[0].nodeValue);
+    isContainerVisible = true;
+    dojo.byId("imgSearchLoader").style.display = "block";
+    if (dojo.byId("tdSearchAddress").className.trim() == "tdSearchByAddress") {
+        //Search for address
+        if (dojo.byId("txtAddress").value.trim() == '') {
+            dojo.byId("imgSearchLoader").style.display = "none";
+            RemoveChildren(dojo.byId('tblAddressResults'));
+            CreateScrollbar(dojo.byId("divAddressScrollContainer"), dojo.byId("divAddressScrollContent"));
+            if (dojo.byId("txtAddress").value != "") {
+                alert(messages.getElementsByTagName("addressToLocate")[0].childNodes[0].nodeValue);
+            }
             return;
         }
-        else if (searchAddress == dojo.byId("txtAddress").value && node.style.display != "none") {
-            WipeOutControl(node, 500);
-        }
-        else if (searchAddress == dojo.byId("txtAddress").value && node.style.display == "none") {
-            WipeInControl(node, 500);
-        }
-
-
         var address = [];
+        address[locatorSettings.Locators[0].LocatorParamaters] = dojo.byId('txtAddress').value;
 
-        address[locatorFields] = dojo.byId('txtAddress').value;
-
-        ShowLoadingMessage('Searching...');
-        var locator = new esri.tasks.Locator(locatorURL);
-        locator.outSpatialReference = map.spatialReference;
-        locator.addressToLocations(address, ["Loc_name"], function (candidates) {
-            ShowLocatedAddress(candidates);
-        }, function (err) {
-            HideLoadingMessage();
-
-            ShowDialog('Locator Error', messages.getElementsByTagName("unableToLocate")[0].childNodes[0].nodeValue);
-        });
+        var locator1 = new esri.tasks.Locator(locatorSettings.Locators[0].LocatorURL);
+        locator1.outSpatialReference = map.spatialReference;
+        locator1.addressToLocations(address, [locatorSettings.Locators[0].CandidateFields], function (candidates) {
+            if (dojo.coords("divAddressHolder").h > 0) {
+                if (isContainerVisible) {
+                    // Discard searches made obsolete by new typing from user
+                    if (thisSearchTime < lastSearchTime) {
+                        return;
+                    }
+                    ShowLocatedAddress(candidates);
+                }
+            }
+            else {
+                dojo.byId("imgSearchLoader").style.display = "none";
+                RemoveChildren(dojo.byId('tblAddressResults'));
+                CreateScrollbar(dojo.byId("divAddressScrollContainer"), dojo.byId("divAddressScrollContent"));
+                return;
+            }
+        },
+    function (err) {
+        dojo.byId("imgSearchLoader").style.display = "none";
+    });
     }
     else {
+        //Search for case name
         if (dojo.byId("txtAddress").value.trim() == '') {
-            ShowDialog('Locator Error', messages.getElementsByTagName("caseName")[0].childNodes[0].nodeValue);
+            dojo.byId("imgSearchLoader").style.display = "none";
+            RemoveChildren(dojo.byId('tblAddressResults'));
+            CreateScrollbar(dojo.byId("divAddressScrollContainer"), dojo.byId("divAddressScrollContent"));
+            if (dojo.byId("txtAddress").value != "") {
+                alert(messages.getElementsByTagName("caseToLocate")[0].childNodes[0].nodeValue);
+            }
             return;
         }
-        else if (searchAddress == dojo.byId("txtAddress").value && node.style.display != "none") {
-            WipeOutControl(node, 500);
-        }
-        else if (searchAddress == dojo.byId("txtAddress").value && node.style.posHeight == 0) {
-            WipeInControl(node, 500);
-        }
         else {
-            ShowLoadingMessage('Searching...');
-            searchAddress = dojo.byId("txtAddress").value.trim();
             var query = new esri.tasks.Query();
-            query.where = "CASENAME like '%" + searchAddress + "%'";
-            map.getLayer(devPlanLayerID).queryFeatures(query, function (featureSet) {
+            query.where = dojo.string.substitute(locatorSettings.Locators[1].QueryString, [dojo.byId("txtAddress").value.trim()]);
+            map.getLayer(devPlanLayerId).queryFeatures(query, function (featureSet) {
+                // Discard searches made obsolete by new typing from user
+                if (thisSearchTime < lastSearchTime) {
+                    return;
+                }
+
                 if (featureSet.features.length > 0) {
                     PopulateCaseNames(featureSet.features);
                 }
                 else {
-                    RemoveChildren(dojo.byId('divAddressContainer'));
-                    searchAddress = '';
-                    map.infoWindow.hide();
-                    ShowDialog('Locator Result', messages.getElementsByTagName("noMatchingCaseName")[0].childNodes[0].nodeValue);
-                    HideLoadingMessage();
+                    RemoveChildren(dojo.byId('tblAddressResults'));
+                    LoctorErrBack("noMatchingCaseName");
+                    dojo.byId("imgSearchLoader").style.display = "none";
                 }
             }, function () {
-                RemoveChildren(dojo.byId('divAddressContainer'));
-                searchAddress = '';
-                map.infoWindow.hide();
-                ShowDialog('Locator Result', messages.getElementsByTagName("noMatchingCaseName")[0].childNodes[0].nodeValue);
-                HideLoadingMessage();
+                RemoveChildren(dojo.byId('tblAddressResults'));
+                LoctorErrBack("noMatchingCaseName");
+                dojo.byId("imgSearchLoader").style.display = "none";
             });
         }
     }
 }
 
-//Function to populate all the case names
-function PopulateCaseNames(features) {
-    RemoveChildren(dojo.byId('divAddressContainer'));
-    if (features.length == 1) {
-        searchAddress = '';
-        var td1 = document.createElement("td");
-        td1.setAttribute("objectId", features[0].attributes[map.getLayer(devPlanLayerID).objectIdField]);
-        td1.setAttribute("caseName", features[0].attributes[caseName]);
-        LocateCaseOnMap(td1);
+//Display address container upon selecting 'Address' tab in search panel
+function SearchByAddress() {
+    if (dojo.byId("imgSearchLoader").style.display == "block") {
+        return;
+    }
+    if (dojo.byId("txtAddress").getAttribute("defaultAddress") == dojo.byId("txtAddress").getAttribute("defaultAddressTitle")) {
+        dojo.byId("txtAddress").style.color = "gray";
     }
     else {
-        var table = document.createElement("table");
+        dojo.byId("txtAddress").style.color = "white";
+    }
+    dojo.byId("txtAddress").value = dojo.byId("txtAddress").getAttribute("defaultAddress");
+    lastSearchString = dojo.byId("txtAddress").value.trim();
+    RemoveChildren(dojo.byId('tblAddressResults'));
+    RemoveScrollBar(dojo.byId("divAddressScrollContainer"));
+    dojo.byId("tdSearchAddress").className = "tdSearchByAddress";
+    dojo.byId("tdSearchCase").className = "tdSearchByUnSelectedCase";
+}
+
+//Populate candidate address list in address container
+function ShowLocatedAddress(candidates) {
+
+    if (dojo.byId("tdSearchAddress").className.trim() == "tdSearchByAddress") {
+        RemoveChildren(dojo.byId('tblAddressResults'));
+        CreateScrollbar(dojo.byId("divAddressScrollContainer"), dojo.byId("divAddressScrollContent"));
+
+        if (candidates.length > 0) {
+            var table = dojo.byId("tblAddressResults");
+            var tBody = document.createElement("tbody");
+            table.appendChild(tBody);
+            table.cellSpacing = 0;
+            table.cellPadding = 0;
+
+            //Filter and display valid address results according to locator settings in configuration file
+            var counter = 0;
+            for (var i in candidates) {
+                if (candidates[i].score > locatorSettings.Locators[0].AddressMatchScore) {
+                    for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
+                        if (map.getLayer(baseMapLayers[bMap].Key).visible) {
+                            var bmap = baseMapLayers[bMap].Key;
+                        }
+                    }
+
+                    if (map.getLayer(bmap).fullExtent.contains(candidates[i].location)) {
+                        for (j in locatorSettings.Locators[0].LocatorFieldValues) {
+                            if (candidates[i].attributes[locatorSettings.Locators[0].LocatorFieldName] == locatorSettings.Locators[0].LocatorFieldValues[j]) {
+                                counter++;
+                                var candidate = candidates[i];
+                                var tr = document.createElement("tr");
+                                tBody.appendChild(tr);
+                                var td1 = document.createElement("td");
+                                td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes);
+                                td1.align = "left";
+                                td1.className = 'bottomborder';
+                                td1.style.cursor = "pointer";
+                                td1.setAttribute("x", candidate.location.x);
+                                td1.setAttribute("y", candidate.location.y);
+                                td1.setAttribute("address", dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes));
+                                td1.onclick = function () {
+                                    dojo.byId("txtAddress").value = this.innerHTML;
+                                    dojo.byId('txtAddress').setAttribute("defaultAddress", this.innerHTML);
+                                    mapPoint = new esri.geometry.Point(Number(this.getAttribute("x")), Number(this.getAttribute("y")), map.spatialReference);
+                                    dojo.byId("txtAddress").setAttribute("defaultAddressTitle", this.innerHTML);
+                                    LocateGraphicOnMap(mapPoint);
+                                    dojo.byId("imgGeolocation").src = "images/gps.png";
+                                }
+                                tr.appendChild(td1);
+                            }
+                        }
+                    }
+                }
+            }
+            //Display error message if there are no valid candidate addresses
+            if (counter == 0) {
+                var tr = document.createElement("tr");
+                tBody.appendChild(tr);
+                var td1 = document.createElement("td");
+                td1.innerHTML = messages.getElementsByTagName("noSearchResults")[0].childNodes[0].nodeValue;
+                tr.appendChild(td1);
+                dojo.byId("imgSearchLoader").style.display = "none";
+                return;
+            }
+            dojo.byId("imgSearchLoader").style.display = "none";
+            SetAddressResultsHeight();
+        } else {
+            dojo.byId("imgSearchLoader").style.display = "none";
+            LoctorErrBack("noSearchResults");
+        }
+    }
+}
+
+//Locate searched address on map with pushpin graphic
+function LocateGraphicOnMap(mapPoint) {
+    selectedMapPoint = null;
+    featureID = null;
+    map.infoWindow.hide();
+    ClearGraphics();
+    if (mapPoint) {
+        map.setLevel(locatorSettings.Locators[0].ZoomLevel);
+        map.centerAt(mapPoint);
+        var symbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
+        var graphic = new esri.Graphic(mapPoint, symbol, { "Locator": true }, null);
+        map.getLayer(tempGraphicsLayerId).add(graphic);
+    }
+    HideAddressContainer();
+}
+
+//Display case name container upon selecting 'Case Name' tab in search panel
+function SearchByCase() {
+    if (dojo.byId("imgSearchLoader").style.display == "block") {
+        return;
+    }
+
+    if (dojo.byId("txtAddress").getAttribute("defaultCase") == dojo.byId("txtAddress").getAttribute("defaultCaseTitle")) {
+        dojo.byId("txtAddress").style.color = "gray";
+    }
+    else {
+        dojo.byId("txtAddress").style.color = "white";
+    }
+
+    RemoveChildren(dojo.byId('tblAddressResults'));
+    RemoveScrollBar(dojo.byId("divAddressScrollContainer"));
+    dojo.byId("txtAddress").value = dojo.byId("txtAddress").getAttribute("defaultCase");
+    lastSearchString = dojo.byId("txtAddress").value.trim();
+    dojo.byId("tdSearchAddress").className = "tdSearchByUnSelectedAddress";
+    dojo.byId("tdSearchCase").className = "tdSearchByCase";
+}
+
+//Populate list of case names in case container
+function PopulateCaseNames(features) {
+    if (dojo.byId("tdSearchAddress").className.trim() != "tdSearchByAddress") {
+        RemoveChildren(dojo.byId('tblAddressResults'));
+        var table = dojo.byId("tblAddressResults");
         var tBody = document.createElement("tbody");
         table.appendChild(tBody);
         table.className = "tbl";
         table.cellSpacing = 0;
         table.cellPadding = 0;
-        for (var i = 0; i < features.length; i++) {
-            var tr = document.createElement("tr");
-            tBody.appendChild(tr);
-            var td1 = document.createElement("td");
-            td1.innerHTML = features[i].attributes[caseName];
-            td1.className = 'tdAddress';
-            td1.height = 20;
-            td1.title = 'Click to locate case';
-            td1.setAttribute("objectId", features[i].attributes[map.getLayer(devPlanLayerID).objectIdField]);
-            td1.setAttribute("caseName", features[i].attributes[caseName]);
-            td1.onclick = function () {
-                LocateCaseOnMap(this);
+        if (features.length > 0) {
+            if (features.length == 1) {
+                dojo.byId('txtAddress').setAttribute("objectId", features[0].attributes[map.getLayer(devPlanLayerId).objectIdField]);
+                dojo.byId('txtAddress').setAttribute("caseName", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, features[0].attributes));
+                dojo.byId('txtAddress').setAttribute("defaultCase", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, features[0].attributes));
+                dojo.byId("txtAddress").setAttribute("defaultCaseTitle", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, features[0].attributes));
+                LocateCaseOnMap(dojo.byId('txtAddress'));
             }
-            tr.appendChild(td1);
-        }
-        dojo.byId('divAddressContainer').appendChild(table);
-        AnimateAdvanceSearch();
-        HideLoadingMessage();
-    }
-}
-
-//Function to locate case on map
-function LocateCaseOnMap(imgCase) {
-    ShowLoadingMessage('Populating...');
-    var objectId = imgCase.getAttribute("objectId");
-    var query = new esri.tasks.Query();
-    query.where = map.getLayer(devPlanLayerID).objectIdField + " = " + objectId;
-    map.getLayer(devPlanLayerID).queryFeatures(query, function (featureSet) {
-
-        if (featureSet.features[0], featureSet.features[0].geometry.contains(featureSet.features[0].geometry.getExtent().getCenter())) {
-            DisplayInfoWindow(featureSet.features[0], featureSet.features[0].geometry.getExtent().getCenter());
-        }
-        else {
-            DisplayInfoWindow(featureSet.features[0], featureSet.features[0].geometry.getPoint(0, 0));
-        }
-        HideLoadingMessage();
-        map.setExtent(featureSet.features[0].geometry.getExtent().expand(5));
-    });
-    dojo.byId('txtAddress').value = imgCase.getAttribute("caseName");
-    WipeOutControl(dojo.byId('divAddressContainer'), 500);
-}
-
-//Function to populate address
-function ShowLocatedAddress(candidates) {
-    RemoveChildren(dojo.byId('divAddressContainer'));
-    if (candidates.length > 0) {
-        if (candidates[0].score == 100) {
-            searchAddress = '';
-            var td1 = document.createElement("td");
-            td1.setAttribute("x", candidates[0].location.x);
-            td1.setAttribute("y", candidates[0].location.y);
-            td1.setAttribute("address", candidates[0].address);
-            LocateAddressOnMap(td1);
-        }
-        else {
-            var table = document.createElement("table");
-            var tBody = document.createElement("tbody");
-            table.appendChild(tBody);
-            table.className = "tbl";
-            table.cellSpacing = 0;
-            table.cellPadding = 0;
-            for (var i = 0; i < candidates.length; i++) {
-                var candidate = candidates[i];
-                var tr = document.createElement("tr");
-                tBody.appendChild(tr);
-                var td1 = document.createElement("td");
-                td1.innerHTML = candidate.address;
-                td1.className = 'tdAddress';
-                td1.height = 20;
-                td1.setAttribute("x", candidate.location.x);
-                td1.setAttribute("y", candidate.location.y);
-                td1.setAttribute("address", candidate.address);
-                td1.title = 'Click to locate address';
-                td1.onclick = function () {
-                    LocateAddressOnMap(this);
+            else {
+                var caseFeatures = [];
+                for (var j = 0; j < features.length; j++) {
+                    caseFeatures.push({ geometry: features[j].geometry, attributes: features[j].attributes, key: dojo.string.substitute(locatorSettings.Locators[1].DisplayField, features[j].attributes) });
                 }
 
-                tr.appendChild(td1);
+                caseFeatures.sort(function (a, b) {
+                    var nameA = a.key.toLowerCase(), nameB = b.key.toLowerCase()
+                    if (nameA < nameB) //sort string ascending
+                        return -1
+                    if (nameA > nameB)
+                        return 1
+                    return 0 //default return value (no sorting)
+                });
+
+                for (var i in caseFeatures) {
+                    var tr = document.createElement("tr");
+                    tBody.appendChild(tr);
+                    var td1 = document.createElement("td");
+                    td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes);
+                    td1.className = 'bottomborder';
+                    td1.style.cursor = "pointer";
+                    td1.height = 20;
+                    td1.title = 'Click to locate case';
+                    td1.setAttribute("objectId", caseFeatures[i].attributes[map.getLayer(devPlanLayerId).objectIdField]);
+                    td1.setAttribute("caseName", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes));
+                    td1.onclick = function () {
+                        dojo.byId('txtAddress').setAttribute("defaultCase", this.innerHTML);
+                        dojo.byId("txtAddress").setAttribute("defaultCaseTitle", this.innerHTML);
+                        LocateCaseOnMap(this);
+                    }
+                    tr.appendChild(td1);
+                }
             }
-            dojo.byId('divAddressContainer').appendChild(table);
-            AnimateAdvanceSearch();
         }
+        SetAddressResultsHeight();
+        dojo.byId("imgSearchLoader").style.display = "none";
     }
-    else {
-        dojo.byId('txtAddress').focus();
-        ShowDialog('Locator Error', messages.getElementsByTagName("unableToLocate")[0].childNodes[0].nodeValue);
-    }
-    HideLoadingMessage();
 }
 
-//Function to locate address on map
-function LocateAddressOnMap(imgLocate) {
-    var mapPoint = new esri.geometry.Point(imgLocate.getAttribute("x"), imgLocate.getAttribute("y"), map.spatialReference);
-    ClearGraphics();
-
-    var graphicCollection = new esri.geometry.Multipoint(map.spatialReference);
-    graphicCollection.addPoint(mapPoint);
-    geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
-        mapPoint = newPointCollection[0].getPoint(0);
-        map.centerAndZoom(mapPoint, map._slider.maximum - 2);
-
-        var symbol = new esri.symbol.PictureMarkerSymbol('images/pushpin.png', 25, 25);
-        graphic = new esri.Graphic(mapPoint, symbol, null, null);
-        var features = [];
-        features.push(graphic);
-        var featureSet = new esri.tasks.FeatureSet();
-        featureSet.features = features;
-        var layer = map.getLayer(tempGraphicLayer);
-        layer.add(featureSet.features[0]);
+//Locate searched case on map and open up infowindow
+function LocateCaseOnMap(imgCase) {
+    ShowProgressIndicator();
+    featureID = null;
+    map.infoWindow.hide();
+    orientationChange = true;
+    var objectId = imgCase.getAttribute("objectId");
+    var query = new esri.tasks.Query();
+    query.where = map.getLayer(devPlanLayerId).objectIdField + " = " + objectId;
+    map.getLayer(devPlanLayerId).queryFeatures(query, function (featureSet) {
+        map.setExtent(featureSet.features[0].geometry.getExtent().expand(2));
+        setTimeout(function () {
+            ShowInfoWindowDetails(featureSet.features[0].geometry.getExtent().getCenter(), featureSet.features[0].attributes, false);
+            orientationChange = false;
+        }, 1200);
+        HideProgressIndicator();
     });
-    dojo.byId('txtAddress').value = imgLocate.getAttribute("address");
-    WipeOutControl(dojo.byId('divAddressContainer'), 500);
+    dojo.byId('txtAddress').value = imgCase.getAttribute("caseName");
+    HideAddressContainer();
+}
+
+//This function is called when locator service fails or does not return any data
+function LoctorErrBack(val) {
+    var table = dojo.byId("tblAddressResults");
+    var tBody = document.createElement("tbody");
+    table.appendChild(tBody);
+    table.cellSpacing = 0;
+    table.cellPadding = 0;
+
+    var tr = document.createElement("tr");
+    tBody.appendChild(tr);
+    var td1 = document.createElement("td");
+    td1.innerHTML = messages.getElementsByTagName(val)[0].childNodes[0].nodeValue;
+    tr.appendChild(td1);
+}
+
+//Query the features while sharing
+function ExecuteQueryTask() {
+    ShowProgressIndicator();
+    var queryTask = new esri.tasks.QueryTask(devPlanLayerURL.ServiceURL);
+    var query = new esri.tasks.Query;
+    query.outSpatialReference = map.spatialReference;
+    query.where = map.getLayer(devPlanLayerId).objectIdField + "=" + featureID;
+    query.outFields = ["*"];
+    query.returnGeometry = true;
+    queryTask.execute(query, function (fset) {
+        if (fset.features.length > 0) {
+            ShowInfoWindowDetails(fset.features[0].geometry.getExtent().getCenter(), fset.features[0].attributes, true);
+        }
+        HideProgressIndicator();
+    }, function (err) {
+        alert(err.Message);
+    });
 }

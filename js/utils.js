@@ -1,5 +1,5 @@
 ﻿/** @license
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,792 +14,463 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
-var tinyResponse; //variable for storing the response getting from tiny url api
-var tinyUrl;
+var orientationChange = false; //variable for setting the flag on orientation
+var tinyResponse; //variable for storing the response getting from tiny URL api
+var tinyUrl; //variable for storing the tiny URL
+var isContainerVisible = true; //variable for setting the flag on address container
 
-//Function for displaying Help window
-function ShowHelp() {
-    window.open(helpURL, "helpwindow");
-    var helpbutton = dijit.byId('btnImgHelp');
-    helpbutton.attr("checked", false);
-}
-
-//Function for creating a control and setting a tooltip for a control
-function CreateControl(type, controlId, cssName) {
-    var ele = document.createElement(type);
-    ele.className = cssName;
-    if (id != "") {
-        ele.id = controlId;
+//Display land use case details in infowindow
+function ShowInfoWindowDetails(mapPoint, attributes, share) {
+    featureID = attributes[map.getLayer(devPlanLayerId).objectIdField];
+    dojo.byId("divInfoDetails").style.position = "relative";
+    map.infoWindow.hide();
+    if (showCommentsTab) {
+        dojo.byId("imgComments").style.display = "block";
     }
-}
-
-//Function to add graphic on the layer
-function AddGraphic(layer, symbol, point, attr) {
-    var graphic = new esri.Graphic(point, symbol, attr, null);
-    var features = [];
-    features.push(graphic);
-    var featureSet = new esri.tasks.FeatureSet();
-    featureSet.features = features;
-    layer.add(featureSet.features[0]);
-}
-
-//Function for Clearing graphics on map
-function ClearGraphics() {
-    if (map.getLayer(tempGraphicLayer)) {
-        map.getLayer(tempGraphicLayer).clear();
+    if (!isMobileDevice) {
+        dojo.byId('divInfoContent').style.display = "none";
+        dojo.byId('divInfoContent').style.width = infoPopupWidth + "px";
+        dojo.byId('divInfoContent').style.height = infoPopupHeight + "px";
     }
+    for (var i in attributes) {
+        if (!attributes[i]) {
+            attributes[i] = "";
+        }
+    }
+    map.getLayer(tempGraphicsLayerId).clear();
+    //Set infowindow size based on devices or desktop browsers
+    (isMobileDevice) ? map.infoWindow.resize(225, 60) : map.infoWindow.resize(infoPopupWidth, infoPopupHeight);
+    if (!share) {
+        if (!isMobileDevice) {
+            map.setExtent(GetBrowserMapExtent(mapPoint));
+        }
+        else {
+            map.setExtent(GetMobileMapExtent(mapPoint));
+        }
+    }
+    setTimeout(function () {
+        selectedMapPoint = mapPoint;
+        var screenPoint = map.toScreen(selectedMapPoint);
+        screenPoint.y = map.height - screenPoint.y;
+        map.infoWindow.show(screenPoint);
+        if (isMobileDevice) {
+            var header;
+            if (dojo.string.substitute(infoWindowHeader, attributes)) {
+                header = dojo.string.substitute(infoWindowHeader, attributes).trimString(Math.round(225 / 14));
+            }
+            else {
+                header = dojo.string.substitute(infoWindowHeader, attributes);
+            }
+            map.infoWindow.setTitle(header);
+            dojo.connect(map.infoWindow.imgDetailsInstance(), "onclick", function () {
+                if (isMobileDevice) {
+                    selectedMapPoint = null;
+                    featureID = null;
+                    map.infoWindow.hide();
+                    ShowInfoRequestContainer();
+                }
+                dojo.byId('divInfoContent').style.display = "block";
+                PopulateInfoDetails(attributes);
+            });
+            var cont;
+            if (dojo.string.substitute(infoWindowContent, attributes).trimString) {
+                cont = dojo.string.substitute(infoWindowContent, attributes).trimString(Math.round(225 / 12));
+            }
+            else {
+                cont = dojo.string.substitute(infoWindowContent, attributes);
+            }
+            map.infoWindow.setContent(cont);
+        }
+        else {
+            PopulateInfoDetails(attributes);
+        }
+    }, 500);
 }
 
-//Function for toggling comments view
-function ToggleCommentsView(viewStatus) {
-    if (viewStatus) {
-        dojo.byId('divAddComment').style.display = 'block';
-        dojo.byId('divCommentInput').style.display = 'none';
-        dojo.byId('divCommentData').style.display = 'none';
+//Populate land use case details
+function PopulateInfoDetails(attributes) {
+    ShowInfoCommentsView();
+    if (!isMobileDevice) {
+        dojo.byId('divInfoContent').style.display = "block";
+        dojo.byId("divInfoDetails").style.display = "block";
+    }
+    RemoveChildren(dojo.byId('tblInfoDetails'));
+    RemoveChildren(dojo.byId('divCommentsContent'));
+    if (isBrowser) {
+        value = dojo.string.substitute(infoWindowHeader, attributes).trim();
+        value = value.trimString(Math.round(infoPopupWidth / 6));
+
+        if (value.length > Math.round(infoPopupWidth / 6)) {
+            dojo.byId('tdInfoHeader').title = dojo.string.substitute(infoWindowHeader, attributes);
+        }
     }
     else {
-        dojo.byId('divAddComment').style.display = 'none';
-        dojo.byId('divCommentInput').style.display = 'block';
-        dojo.byId('divCommentData').style.display = 'block';
-
+        value = dojo.string.substitute(infoWindowHeader, attributes).trim();
+        value = value.trimString(Math.round(infoPopupWidth / 10));
     }
-    ResetValues();
-}
+    dojo.byId('tdInfoHeader').innerHTML = value;
+    var tblInfoDetails = dojo.byId('tblInfoDetails');
+    var tbody = document.createElement("tbody");
+    tblInfoDetails.appendChild(tbody);
+    var date = new js.date();
 
-//Function for creating dynamic Tab Container in InfoPopup on Featurelayer click
-function CreateContent() {
-    var tabContainer = document.createElement('div');
-    tabContainer.id = 'divTab';
-    var tabPan = document.createElement('div');
-    tabPan.id = 'divPan';
-
-    var dtlTab = new dijit.layout.ContentPane({
-        title: "<img src='images/info.png' width='30' height='30'/> Details",
-        content: dojo.byId("divDetails")
-    }, dojo.byId('divPan'));
-    var attTab = new dijit.layout.ContentPane({
-        title: "<img src='images/attach.png' width='30' height='30'/> Additional Info",
-        content: dojo.byId("divAttachments")
-    }, dojo.byId('divPan'));
-    var cmntTab = new dijit.layout.ContentPane({
-        title: "<img src='images/comments.png' width='30' height='30'/> Comments",
-        content: dojo.byId("divComments")
-    }, dojo.byId('divPan'));
-
-    cmntTab.onShow = function () {
-        if (dojo.byId('divCommentsScrollContainer')) {
-            CreateScrollbar(dojo.byId('divCommentsScrollContainer'), dojo.byId('divCommentsScrollContent'));
+    for (var i in map.getLayer(devPlanLayerId).fields) {
+        if (!attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
+            attributes[map.getLayer(devPlanLayerId).fields[i].name] = "-";
+            continue;
+        }
+        if (map.getLayer(devPlanLayerId).fields[i].type == "esriFieldTypeDate") {
+            if (attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
+                if (Number(attributes[map.getLayer(devPlanLayerId).fields[i].name])) {
+                    var date = new js.date();
+                    var utcMilliseconds = Number(attributes[map.getLayer(devPlanLayerId).fields[i].name]);
+                    attributes[map.getLayer(devPlanLayerId).fields[i].name] = dojo.date.locale.format(date.utcTimestampFromMs(utcMilliseconds), { datePattern: formatDateAs, selector: "date" });
+                }
+            }
         }
     }
 
-    var tabs = new dijit.layout.TabContainer({
-        style: "width: 440px; height: 270px;",
-        tabPosition: "bottom"
-    }, dojo.byId('divTab'));
-    tabs.addChild(dtlTab);
-    tabs.addChild(attTab);
-    tabs.addChild(cmntTab);
+    for (var index in infoWindowData) {
+        var tr = document.createElement("tr");
+        tbody.appendChild(tr);
+        CreateTableRow(tr, infoWindowData[index].DisplayText, dojo.string.substitute(infoWindowData[index].AttributeValue, attributes));
+    }
 
-    tabs.startup();
-
-    return tabs;
+    if (showCommentsTab) {
+        FetchRequestComments(dojo.string.substitute((isBrowser ? devPlanLayerURL.PrimaryKeyForCase : devPlanMobileLayerURL.PrimaryKeyForCase), attributes));
+    }
+    else {
+        selectedRequestID = dojo.string.substitute((isBrowser ? devPlanLayerURL.PrimaryKeyForCase : devPlanMobileLayerURL.PrimaryKeyForCase), attributes);
+    }
+    FetchAttachmentDetails(attributes[map.getLayer(devPlanLayerId).objectIdField], tbody);
+    SetViewDetailsHeight();
 }
 
-//Function triggered for creating image
-function CreateImage(imageSrc) {
-    var imgLocate = document.createElement("img");
-    imgLocate.style.width = '20px';
-    imgLocate.style.height = '20px';
-    imgLocate.style.cursor = 'pointer';
-    imgLocate.src = imageSrc;
-    imgLocate.title = 'Click Here';
-    return imgLocate;
+//Create row in a table
+function CreateTableRow(tr, displayName, value) {
+    var td = document.createElement("td");
+    td.innerHTML = displayName;
+    td.style.height = "18px";
+    td.style.width = "120px";
+    td.vAlign = "top";
+    td.style.paddingTop = "5px";
+    var td1 = document.createElement("td");
+    td1.style.width = "180px";
+    td1.style.paddingTop = "5px";
+    td1.style.verticalAlign = "top";
+    td1.innerHTML = value;
+    tr.appendChild(td);
+    tr.appendChild(td1);
 }
 
-//Function triggered for animating address container
-function AnimateAdvanceSearch() {
-    var node = dojo.byId('divAddressContainer');
-    if (node.style.display == "none") {
-        WipeInControl(node, 0, 500);
+//Set height for view details in info window
+function SetViewDetailsHeight() {
+    var height = (isMobileDevice) ? (dojo.window.getBox().h) : dojo.coords(dojo.byId('divInfoContent')).h;
+    if (height > 0) {
+        dojo.byId('divInfoDetailsScroll').style.height = (height - ((!isTablet) ? 55 : 55)) + "px";
+    }
+    CreateScrollbar(dojo.byId("divInfoDetails"), dojo.byId("divInfoDetailsScroll"));
+}
+
+//Display request container for mobile
+function ShowInfoRequestContainer() {
+    dojo.byId('divInfoContainer').style.display = "block";
+    dojo.byId("divInfoDetails").style.display = "block";
+    dojo.replaceClass("divInfoContent", "showContainer", "hideContainer");
+}
+
+//Hide info window
+function HideInfoContainer() {
+    selectedMapPoint = null;
+    featureID = null;
+    if (isMobileDevice) {
+        setTimeout(function () {
+            dojo.byId('divInfoContainer').style.display = "none";
+            dojo.replaceClass("divInfoContent", "hideContainer", "showContainer");
+        }, 500);
+    }
+    else {
+        map.infoWindow.hide();
+        dojo.byId('divInfoContent').style.display = "none";
+        dojo.byId("divInfoDetails").style.display = "none";
     }
 }
 
-//Dojo function to animate address container
-function WipeInControl(node, height, duration) {
-    dojo.fx.wipeIn({
-        node: node,
-        duration: duration
-    }).play();
-}
-
-//Dojo function to animate address container
-function WipeOutControl(node, duration) {
-    dojo.fx.wipeOut({
-        node: node,
-        duration: duration
-    }).play();
-}
-
-//Function for refreshing address container div
-function RemoveChildren(parentNode) {
-    while (parentNode.hasChildNodes()) {
-        parentNode.removeChild(parentNode.lastChild);
-    }
-}
-
-//Function for displaying Standby text
-function ShowLoadingMessage(loadingMessage) {
-    dojo.byId('divLoadingIndicator').style.display = 'block';
-    dojo.byId('loadingMessage').innerHTML = loadingMessage;
-}
-
-//Function for hiding Standby text
-function HideLoadingMessage() {
-    dojo.byId('divLoadingIndicator').style.display = 'none';
-}
-
-//Function triggered for getting attachments information from Featurelayer
-function GetAttachmentInfo(files) {
-    document.getElementById("divAttachmentsData").appendChild(Createfiledata(files));
-}
-
-//Function for retrieving files from FeatureLayer
-function Createfiledata(files) {
-    var fileTable = document.createElement("table");
-    var fileTBody = document.createElement("tbody");
-    fileTable.appendChild(fileTBody);
-
-    for (var i = 0; i < files.length; i++) {
-        fileTBody.appendChild(CreateData(files[i].name, files[i].url, files[i].size));
-    }
-    fileTable.appendChild(fileTBody);
-    return fileTable;
-}
-
-//Function for creating data for the attachments
-function CreateData(text, attachmentURL, fileSize) {
-    var filetr = document.createElement("tr");
-    var filetd = document.createElement("td");
-    var filespan = document.createElement("span");
-    filespan.style.cursor = 'pointer';
-
-    var pdfSize = fileSize / (1024 * 1024);
-    var pdfFileSize = Math.round(pdfSize * 100) / 100;
-
-    var filesizetd = document.createElement("td");
-    filesizetd.innerHTML = "(" + pdfFileSize + " MB)";
-    filespan.innerHTML = text;
-    filespan.onclick = function () {
-        window.open(attachmentURL);
-    }
-
-    filetd.appendChild(filespan);
-    filetr.appendChild(filetd);
-    filetr.appendChild(filesizetd);
-
-    return filetr;
-}
-
-//Function triggered when user mouse over's on featurelayer
-function ShowMapTip(evt) {
-    CloseMapTip();
-
-    var date = new js.date();
-    var utcMilliseconds = Number(evt.graphic.attributes[hearingDate]);
-
-    var dialog = new dijit.TooltipDialog({
-        id: "toolTipDialog",
-        content: '<a style="font-size:11px; font-family:Verdana; font-weight: bolder;">Case Number</a>: ' + evt.graphic.attributes[caseID] + "<br/>" + '<a style="font-size:11px; font-family:Verdana; font-weight: bolder;">Case Name</a>: ' + evt.graphic.attributes[caseName] + "<br/>" + '<a style="font-size:11px; font-family:Verdana; font-weight: bolder;">Hearing Date</a>: ' + date.utcTimestampFromMs(utcMilliseconds).toDateString().substring(4),
-        style: "position: absolute; z-index:1000;"
+//Fetch attachment details
+function FetchAttachmentDetails(objectID, tbody) {
+    map.getLayer(devPlanLayerId).queryAttachmentInfos(objectID, function (files) {
+        if (files.length == 0) {
+            var tdAttachments = CreateAttachmentList(tbody);
+            tdAttachments.innerHTML = messages.getElementsByTagName("noAttachment")[0].childNodes[0].nodeValue;
+        }
+        else {
+            for (var a = 0; a < files.length; a++) {
+                var tdAttachments = CreateAttachmentList(a, tbody);
+                if (files[a].contentType.indexOf("image") >= 0) {
+                    var filePreview = dojo.create("img");
+                    filePreview.style.height = "130px";
+                    filePreview.style.width = "130px";
+                    filePreview.style.cursor = "pointer";
+                    filePreview.src = files[a].url;
+                    filePreview.onclick = function () {
+                        window.open(this.src);
+                    }
+                    tdAttachments.appendChild(filePreview);
+                }
+                else {
+                    var filespan = document.createElement("span");
+                    filespan.innerHTML = files[a].name;
+                    filespan.className = 'spanFileDetails';
+                    filespan.setAttribute("attachedLink", files[a].url);
+                    tdAttachments.appendChild(filespan);
+                    filespan.onclick = function () {
+                        window.open(this.getAttribute("attachedLink"));
+                    }
+                }
+            }
+        }
+        setTimeout(function () {
+            CreateScrollbar(dojo.byId("divInfoDetails"), dojo.byId("divInfoDetailsScroll"));
+        }, 1000);
     });
-    dialog.startup();
-    dojo.style(dialog.domNode, "opacity", 0.80);
-    dijit.placeOnScreen(dialog.domNode, { x: evt.pageX, y: evt.pageY }, ["BL", "BR"], { x: 5, y: 5 });
 }
 
-//Function for hiding alert dialog
-function CloseMapTip() {
-    if (dijit.byId('toolTipDialog')) {
-        dijit.byId('toolTipDialog').destroy();
-    }
+//Create attachment list
+function CreateAttachmentList(order, tbody) {
+    var tr = document.createElement("tr");
+    tbody.appendChild(tr);
+    tr.vAlign = "top";
+    var tdTitle = document.createElement("td");
+    tdTitle.innerHTML = attachmentDisplayName + " " + (order + 1) + ": ";
+    tdTitle.style.paddingTop = "5px";
+    tr.appendChild(tdTitle);
+    var tdAttachments = document.createElement("td");
+    tdAttachments.style.paddingTop = "5px";
+    tr.appendChild(tdAttachments);
+    return tdAttachments;
 }
 
-//Function for sorting comments according to date
-function SortResultFeatures(a, b) {
-    var x = a.attributes[submitdate];
-    var y = b.attributes[submitdate];
-    return ((x > y) ? -1 : ((x < y) ? 1 : 0));
-}
-
-//Function for fetching comments from Commentslayer
-function FetchComments() {
-    ShowDojoLoading(dojo.byId("divComments"));
+//Fetch comments for a land use case
+function FetchRequestComments(requestID) {
+    dojo.byId('btnAddComments').disabled = false;
+    selectedRequestID = requestID;
     var query = new esri.tasks.Query();
-    //set query based on CASEID;
-    query.where = "CASEID = '" + caseId + "'";
+
+    var relationshipId;
+    publicCommentsLayerURL.PrimaryKeyForComments.replace(/\$\{([^\s\:\}]+)(?:\:([^\s\:\}]+))?\}/g, function (match, key) {
+        relationshipId = key;
+    });
+
+    query.where = relationshipId + "= '" + requestID + "'";
     query.outFields = ["*"];
     //execute query
-    map.getLayer(commentLayerID).selectFeatures(query, esri.layers.FeatureLayer.SELECTION_NEW, function (features) {
+    map.getLayer(publicCommentsLayerId).selectFeatures(query, esri.layers.FeatureLayer.SELECTION_NEW, function (features) {
+        RemoveChildren(dojo.byId("divCommentsContent"));
+        var commentsTable = document.createElement("table");
+        commentsTable.style.width = "95%";
+        var commentsTBody = document.createElement("tbody");
+        commentsTable.appendChild(commentsTBody);
+        dojo.byId("divCommentsContent").appendChild(commentsTable);
         if (features.length > 0) {
-            features.sort(SortResultFeatures);
-            RemoveChildren(dojo.byId("divCommentData"));
-            var commentsTable = document.createElement("table");
-            commentsTable.style.width = "100%";
-            var commentsTBody = document.createElement("tbody");
+            features.sort(SortResultFeatures);      //Sort comments based on submitted date
             for (var i = 0; i < features.length; i++) {
                 var trComments = document.createElement("tr");
                 var commentsCell = document.createElement("td");
                 commentsCell.className = "bottomborder";
-                commentsCell.title = features[i].attributes[comments];
-                commentsCell.appendChild(document.createTextNode(features[i].attributes[comments].trimString(60)));
+                commentsCell.appendChild(CreateCommentRecord(features[i].attributes, i));
                 trComments.appendChild(commentsCell);
                 commentsTBody.appendChild(trComments);
             }
-            commentsTable.appendChild(commentsTBody);
-
-            var scrollbar_container = document.createElement('div');
-            scrollbar_container.className = "comments_scrollbar_container";
-            scrollbar_container.id = "divCommentsScrollContainer";
-
-            var content = document.createElement("div");
-            content.className = 'comments_scrollbar_content';
-            content.id = "divCommentsScrollContent";
-
-            content.appendChild(commentsTable);
-            scrollbar_container.appendChild(content);
-
-            dojo.byId("divCommentData").appendChild(scrollbar_container);
-            CreateScrollbar(dojo.byId('divCommentsScrollContainer'), dojo.byId('divCommentsScrollContent'));
-
+            SetCommentHeight();
         }
         else {
-            var defaultComment = document.createElement("span");
-            defaultComment.innerHTML = defaultCmnt;
-            defaultComment.className = "bottomborder";
-            dojo.byId("divCommentData").appendChild(defaultComment);
+            var trComments = document.createElement("tr");
+            var commentsCell = document.createElement("td");
+            commentsCell.appendChild(document.createTextNode(defaultCmnt));
+            trComments.setAttribute("noComments", "true");
+            trComments.appendChild(commentsCell);
+            commentsTBody.appendChild(trComments);
         }
-        HideDojoLoading();
     }, function (err) {
-        HideDojoLoading();
-        ShowDialog('Comments Error', messages.getElementsByTagName("unableToFetchComments")[0].childNodes[0].nodeValue + err.message);
     });
 }
 
-//Function to append ... for a string
-String.prototype.trimString = function (len) {
-    return (this.length > len) ? this.substring(0, len) + "..." : this;
+//Display comments container in infowindow
+function ShowCommentsView() {
+    if (dojo.isIE) {
+        dojo.byId('txtComments').value = " ";
+    }
+    dojo.byId("imgComments").style.display = "none";
+    dojo.byId('imgDirections').src = "images/Details.png";
+    dojo.byId('imgDirections').title = "Details";
+    dojo.byId('imgDirections').setAttribute("disp", "Details");
+    dojo.byId("imgDirections").style.display = "block";
+    ResetCommentValues();
+    dojo.byId('divInfoComments').style.display = "block";
+    dojo.byId('divInfoDetails').style.display = "none";
+    SetCommentHeight();
 }
 
-//Function for displaying loading image in comments tab
-function ShowDojoLoading(target) {
-    dijit.byId('dojoStandBy').target = target;
-    dijit.byId('dojoStandBy').show();
-}
-
-//Function for hiding loading image
-function HideDojoLoading() {
-    dijit.byId('dojoStandBy').hide();
-}
-
-//Function for displaying Alert messages
-function ShowDialog(title, message) {
-    dojo.byId('divMessage').innerHTML = message;
-    var dialog = dijit.byId('dialogAlertMessage');
-    dialog.titleNode.innerHTML = title;
-    dialog.show();
-    dojo.byId('divOKButton').focus();
-}
-
-//Function for hiding Alert messages
-function CloseDialog() {
-    dijit.byId('dialogAlertMessage').hide();
-}
-
-//Function for validating Email in comments tab
-function CheckMailFormat(emailValue) {
-    var pattern = /^([a-zA-Z][a-zA-Z0-9\_\-\.]*\@[a-zA-Z0-9\-]*\.[a-zA-Z]{2,4})?$/i
-    if (pattern.test(emailValue)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-//function to validate name
-function IsName(name) {
-    var namePattern = /^[A-Za-z\.\-\, ]{1,100}$/;
-    if (namePattern.test(name)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-//function to validate 10 digit number
-function IsPhoneNumber(value) {
-    var namePattern = /\d{10}/;
-    if (namePattern.test(value)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-function IsNumber(input) {
-    return (input - 0) == input;
-}
-String.prototype.trim = function () {
-    return this.replace(/^\s+|\s+$/g, '');
-}
-
-//Function triggered when user adds a new comment
-function AddComment() {
-    var errorSpan = document.getElementById('commentError');
-    errorSpan.innerHTML = "";
-    errorSpan.style.display = 'none';
-    if (dijit.byId('txtName').value.trim().length > 0) {
-        if (!IsName(dijit.byId('txtName').value.trim())) {
-            dojo.byId('txtName').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("nameError")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-    }
-
-    if (dijit.byId('txtEmail').value.trim() == '' && dijit.byId('txtPhone').value.trim() == '') {
-        errorSpan.innerHTML = messages.getElementsByTagName("emailError")[0].childNodes[0].nodeValue;
-        errorSpan.style.display = 'block';
-        return;
-    }
-
-    if (dijit.byId('txtCmntAddress').value.length > 100) {
-        dojo.byId('txtCmntAddress').focus();
-        errorSpan.innerHTML = messages.getElementsByTagName("addressError")[0].childNodes[0].nodeValue;
-        errorSpan.style.display = 'block';
-        return;
-    }
-
-    if (dijit.byId('txtPhone').value.trim() == '') {
-        if (!CheckMailFormat(dijit.byId('txtEmail').value.trim())) {
-            dijit.byId('txtEmail').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validEmail")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-    }
-
-    else if (dijit.byId('txtEmail').value.trim() == '') {
-        if (!IsPhoneNumber(dijit.byId('txtPhone').value.trim())) {
-            dijit.byId('txtPhone').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validPhone")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-
-        if (dijit.byId('txtPhone').value.trim().length != 10) {
-            dijit.byId('txtPhone').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validPhoneLength")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-    }
-
-    if (dijit.byId('txtEmail').value.trim() != '') {
-        if (!CheckMailFormat(dijit.byId('txtEmail').value.trim())) {
-            dijit.byId('txtEmail').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validEmail")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-    }
-
-    if (dijit.byId('txtPhone').value.trim() != '') {
-        if (!IsPhoneNumber(dijit.byId('txtPhone').value.trim())) {
-            dijit.byId('txtPhone').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validPhone")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-
-        if (dijit.byId('txtPhone').value.trim().length != 10) {
-            dijit.byId('txtPhone').focus();
-            errorSpan.innerHTML = messages.getElementsByTagName("validPhoneLength")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            return;
-        }
-    }
-
-    var text = dojo.byId('txtComments').value.trim();
+//Add comment
+function AddPublicComment() {
+    var text = dojo.byId('txtComments').value.trim('');
     if (text == "") {
         dojo.byId('txtComments').focus();
-        errorSpan.innerHTML = messages.getElementsByTagName("enterComment")[0].childNodes[0].nodeValue;
-        errorSpan.style.display = 'block';
+        ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("enterComment")[0].childNodes[0].nodeValue);
         return;
     }
-
-    if (text.length > 250) {
+    if (dojo.byId('txtComments').value.length > 250) {
         dojo.byId('txtComments').focus();
-        errorSpan.innerHTML = messages.getElementsByTagName("commentsLength")[0].childNodes[0].nodeValue;
-        errorSpan.style.display = 'block';
+        ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("commentsLength")[0].childNodes[0].nodeValue);
         return;
     }
+    ShowProgressIndicator();
+    var commentGraphic = new esri.Graphic();
+    var date = new js.date();
 
-    else {
-        ShowDojoLoading(dojo.byId("divComments"));
-        var commentGraphic = new esri.Graphic();
+    var attr = {};
+    attr[databaseFields.CaseIdFieldName] = selectedRequestID;
+    attr[databaseFields.CommentsFieldName] = text;
+    attr[databaseFields.DateFieldName] = date.utcMsFromTimestamp(date.localToUtc(date.localTimestampNow()));
+    commentGraphic.setAttributes(attr);
 
-        var date = new js.date();
-
-        var attr =
-         {
-             "CASEID": caseId,
-             "COMMENTS": text,
-             "NAME": dojo.byId('txtName').value.trim(),
-             "EMAIL": dojo.byId('txtEmail').value.trim(),
-             "FULLADDR": dojo.byId('txtCmntAddress').value.trim(),
-             "PHONE": dojo.byId('txtPhone').value.trim(),
-             "SUBMITDT": date.utcMsFromTimestamp(date.localToUtc(date.localTimestampNow()))
-         };
-        commentGraphic.setAttributes(attr);
-        map.getLayer(commentLayerID).applyEdits([commentGraphic], null, null, function (msg) {
-            if (msg[0].error) {
-                errorSpan.innerHTML = messages.getElementsByTagName("unableToComment")[0].childNodes[0].nodeValue;
-                errorSpan.style.display = 'block';
+    dojo.byId('btnAddComments').disabled = true;
+    map.getLayer(publicCommentsLayerId).applyEdits([commentGraphic], null, null, function (msg) {
+        if (msg[0].error) {
+        }
+        else {
+            if (showCommentsTab) {
+                var table = dojo.query('table', dojo.byId("divCommentsContent"));
+                if (table.length > 0) {
+                    var x = dojo.query("tr[noComments = 'true']", table[0]);
+                    if (x.length > 0) {
+                        RemoveChildren(table[0]);
+                    }
+                    var tr = table[0].insertRow(0);
+                    var commentsCell = document.createElement("td");
+                    commentsCell.className = "bottomborder";
+                    var index = dojo.query("tr", table[0]).length;
+                    if (index) {
+                        index = 0;
+                    }
+                    commentsCell.appendChild(CreateCommentRecord(attr, index));
+                    tr.appendChild(commentsCell);
+                }
             }
-            else {
-                FetchComments();
-            }
-            ToggleCommentsView(false);
-            HideDojoLoading();
-        }, function (err) {
-            errorSpan.innerHTML = messages.getElementsByTagName("unableToComment")[0].childNodes[0].nodeValue;
-            errorSpan.style.display = 'block';
-            HideDojoLoading();
-        });
-        ResetValues();
-    }
-}
-
-//Function for reset the values
-function ResetValues() {
-    dijit.byId('txtName').setValue('');
-    dijit.byId('txtEmail').setValue('');
-    dijit.byId('txtCmntAddress').setValue('');
-    dijit.byId('txtPhone').setValue('');
-    dojo.byId('txtComments').value = '';
-    document.getElementById('commentError').innerHTML = "";
-    document.getElementById('commentError').style.display = 'none';
-}
-
-//Function for positioning the address list
-function PositionAddressList() {
-    var coords = dojo.coords('txtAddress');
-    var imgBaseMapCoords = dojo.coords('imgBaseMap');
-    var screenCoords = dojo.coords('divMainContainer');
-    //locating searchlist dynamically.
-    var span = dojo.byId('divAddressContainer');
-    dojo.style(span, {
-        left: coords.x + "px",
-        top: parseInt(coords.h) + parseInt(coords.y) + 3 + "px"
+        }
+        dojo.byId('btnAddComments').disabled = false;
+        ResetCommentValues();
+        HideProgressIndicator();
+        SetCommentHeight();
+        if (!showCommentsTab) {
+            dojo.byId("divCommentsContent").innerHTML = showCommentsMessage;
+        }
+    }, function (err) {
+        dojo.byId('btnAddComments').disabled = false;
+        HideProgressIndicator();
     });
 }
 
+//Create comment record
+function CreateCommentRecord(attributes, i) {
+    var table = document.createElement("table");
+    table.style.width = "100%";
+    var tbody = document.createElement("tbody");
+    var trDate = document.createElement("tr");
+    tbody.appendChild(trDate);
+    var td1 = document.createElement("td");
+    var date = new js.date();
+    td1.align = "left";
+    td1.colSpan = 2;
 
-//Function for toggling the image search according to case or address
-function ToggleSearch(radioInput) {
-    if (dojo.coords(dojo.byId('divAddressContainer')).h > 0) {
-        WipeOutControl(dojo.byId('divAddressContainer'), 500);
-    }
-
-    if (radioInput.id == "rbAddress") {
-        dojo.byId('spanAddress').className = 'text';
-        dojo.byId('spanCaseName').className = 'disabledText';
-        dojo.byId('txtAddress').title = 'Enter an address to locate';
-        dojo.byId('txtAddress').setAttribute('placeholder', "");
-        dojo.byId('txtAddress').value = defaultAddress;
-
-    }
-    else {
-        dojo.byId('spanAddress').className = 'disabledText';
-        dojo.byId('spanCaseName').className = 'text';
-        dojo.byId('txtAddress').title = 'Enter a case name';
-        dojo.byId('txtAddress').setAttribute('placeholder', "Enter a case name");
-        dojo.byId("txtAddress").value = '';
-    }
-    searchAddress = dojo.byId("txtAddress").value;
-}
-
-//Function for toggling the text search according to case or address
-function Toggle(radioInput) {
-    if (dojo.coords(dojo.byId('divAddressContainer')).h > 0) {
-        WipeOutControl(dojo.byId('divAddressContainer'), 500);
-    }
-
-    if (radioInput.id == "spanAddress") {
-        dojo.byId('rbAddress').checked = true;
-        dojo.byId('spanAddress').className = 'text';
-        dojo.byId('spanCaseName').className = 'disabledText';
-        dojo.byId('txtAddress').title = 'Enter an address to locate';
-        dojo.byId('txtAddress').setAttribute('placeholder', "");
-        dojo.byId('txtAddress').value = defaultAddress;
-
-    }
-    else {
-        dojo.byId('rbCaseName').checked = true;
-        dojo.byId('spanAddress').className = 'disabledText';
-        dojo.byId('spanCaseName').className = 'text';
-        dojo.byId('txtAddress').title = 'Enter a case name';
-        dojo.byId('txtAddress').setAttribute('placeholder', "Enter a case name");
-        dojo.byId("txtAddress").value = '';
-    }
-    searchAddress = dojo.byId("txtAddress").value;
-}
-
-//Function for displaying the current location
-function ShowMyLocation(evt) {
-    if (dojo.coords(dojo.byId('divBaseMapTitleContainer')).h > 0) {
-        WipeOutControl(dojo.byId('divBaseMapTitleContainer'), 400);
-    }
-    if (dojo.coords(dojo.byId('divAddressContainer')).h > 0) {
-        WipeOutControl(dojo.byId('divAddressContainer'), 500);
-    }
-    if (dojo.coords(dojo.byId('divAppContainer')).h > 0) {
-        WipeOutControl(dojo.byId('divAppContainer'), 500);
-    }
-
-    dijit.byId('btnImgBaseMap').attr("checked", false);
-    dijit.byId('btnImgApplink').attr("checked", false);
-    dojo.byId('imgGPS').src = "images/bluegps.png";
-
-    if (navigator.geolocation) {
-
-        navigator.geolocation.getCurrentPosition(
-		function (position) {
-		    ShowLoadingMessage("Finding your current location...");
-		    mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
-		    var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
-		    graphicCollection.addPoint(mapPoint);
-		    geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
-		        HideLoadingMessage();
-
-		        if (!map.getLayer(baseMapLayerCollection[0].Key).fullExtent.contains(newPointCollection[0].getPoint(0))) {
-		            ShowDialog('Error', messages.getElementsByTagName("noDataAvlbl")[0].childNodes[0].nodeValue);
-		            return;
-		        }
-		        mapPoint = newPointCollection[0].getPoint(0);
-		        map.centerAt(mapPoint);
-		        var gpsSymbol = new esri.symbol.PictureMarkerSymbol(defaultImg, 25, 25);
-		        var graphic = new esri.Graphic(mapPoint, gpsSymbol, null, null);
-		        map.getLayer(tempGraphicLayer).add(graphic);
-		    });
-		},
-		function (error) {
-		    if (dojo.byId('imgGPS').src = "images/bluegps.png") {
-		        dojo.byId('imgGPS').src = "images/imggeolocation.png";
-		        var gpsButton = dijit.byId('btnGeolocation');
-		        gpsButton.attr("checked", false);
-		    }
-		    HideLoadingMessage();
-		    switch (error.code) {
-		        case error.TIMEOUT:
-		            ShowDialog('Error', messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
-		            break;
-		        case error.POSITION_UNAVAILABLE:
-		            ShowDialog('Error', messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
-		            break;
-		        case error.PERMISSION_DENIED:
-		            ShowDialog('Error', messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
-		            break;
-		        case error.UNKNOWN_ERROR:
-		            ShowDialog('Error', messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
-		            break;
-		    }
-		}, { timeout: 10000 });
-    }
-    else {
-        ShowDialog('Error', messages.getElementsByTagName("noBrowserSupport")[0].childNodes[0].nodeValue);
-        return;
-    }
-}
-
-//Function to switch to facebook,twitter,email
-function ToggleApplication() {
-    dojo.byId('imgGPS').src = "images/imggeolocation.png";
-    var gpsButton = dijit.byId('btnGeolocation');
-    gpsButton.attr("checked", false);
-
-    if (dojo.byId('divAddressContainer').children.length != 0) {
-        WipeOutControl(dojo.byId('divAddressContainer'), 500);
-        setTimeout(function () { RemoveChildren(dojo.byId('divAddressContainer')); }, 500);
-    }
-    else {
-        dojo.byId('divAddressContainer').style.display = 'none';
-    }
-    var bmapNode = dojo.byId('divBaseMapTitleContainer');
-    if (dojo.coords(bmapNode).h > 0) {
-        HideBaseMapWidget();
-    }
-
-    var node = dojo.byId('divAppContainer');
-
-    if (node.style.display == 'none') {
-
-        WipeInControl(node, node.style.height, 500);
-    }
-    else {
-        var imgApplinkButton = dijit.byId('btnImgApplink');
-        imgApplinkButton.attr("checked", false);
-        WipeOutControl(node, 500);
-    }
-}
-
-//Function to open login page for facebook,tweet,email
-function ShareLink(site) {
-    tinyUrl = null;
-    mapExtent = GetMapExtent();
-    var url = esri.urlToObject(String(window.location));
-    var urlStr = encodeURI(url.path) + "?extent=" + mapExtent;
-    url = dojo.string.substitute(mapSharingOptions.TinyURLServiceURL, [urlStr]);
-
-    dojo.io.script.get({
-        url: url,
-        callbackParamName: "callback",
-        load: function (data) {
-            tinyResponse = data;
-            tinyUrl = data;
-            var attr = mapSharingOptions.TinyURLResponseAttribute.split(".");
-            for (var x = 0; x < attr.length; x++) {
-                tinyUrl = tinyUrl[attr[x]];
-            }
-
-            switch (site) {
-                case "facebook":
-                    window.open(dojo.string.substitute(mapSharingOptions.FacebookShareURL, [tinyUrl]));
-                    break;
-                case "twitter":
-                    window.open(dojo.string.substitute(mapSharingOptions.TwitterShareURL, [tinyUrl]));
-                    break;
-                case "mail":
-                    parent.location = dojo.string.substitute(mapSharingOptions.MailShare, [tinyUrl]);
-                    break;
-            }
-        },
-        error: function (error) {
-            ShowDialog('Error', messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-        }
-    });
-    setTimeout(function () {
-        if (!tinyResponse) {
-            ShowDialog('Error', messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-            return;
-        }
-    }, 6000);
-}
-
-//Function to get map Extent
-function GetMapExtent() {
-    var extents = map.extent.xmin.toString() + ",";
-    extents += map.extent.ymin.toString() + ",";
-    extents += map.extent.xmax.toString() + ",";
-    extents += map.extent.ymax.toString();
-    return (extents);
-}
-
-//Function to get the query string value of the provided key if not found the function returns empty string
-function GetQuerystring(key) {
-    var _default;
-    if (_default == null) _default = "";
-    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-    var regex = new RegExp("[\\?&]" + key + "=([^&#]*)");
-    var qs = regex.exec(window.location.href);
-    if (qs == null)
-        return _default;
-    else
-        return qs[1];
-}
-
-//mouse handler for hiding component on it mouse out.
-var customMouseHandler =
-{
-    evtHash: [],
-
-    ieGetUniqueID: function (_elem) {
-        if (_elem === window) { return 'theWindow'; }
-        else if (_elem === document) { return 'theDocument'; }
-        else { return _elem.uniqueID; }
-    },
-
-    addEvent: function (_elem, _evtName, _fn, _useCapture) {
-        if (typeof _elem.addEventListener != 'undefined') {
-            if (_evtName == 'mouseenter')
-            { _elem.addEventListener('mouseover', customMouseHandler.mouseEnter(_fn), _useCapture); }
-            else if (_evtName == 'mouseleave')
-            { _elem.addEventListener('mouseout', customMouseHandler.mouseEnter(_fn), _useCapture); }
-            else
-            { _elem.addEventListener(_evtName, _fn, _useCapture); }
-        }
-        else if (typeof _elem.attachEvent != 'undefined') {
-            var key = '{FNKEY::obj_' + customMouseHandler.ieGetUniqueID(_elem) + '::evt_' + _evtName + '::fn_' + _fn + '}';
-            var f = customMouseHandler.evtHash[key];
-            if (typeof f != 'undefined')
-            { return; }
-
-            f = function () {
-                _fn.call(_elem);
-            };
-
-            customMouseHandler.evtHash[key] = f;
-            _elem.attachEvent('on' + _evtName, f);
-
-            // attach unload event to the window to clean up possibly IE memory leaks
-            window.attachEvent('onunload', function () {
-                _elem.detachEvent('on' + _evtName, f);
+    try {
+        if (!dojo.string.substitute(commentsInfoPopupFieldsCollection.Submitdate, attributes)) {
+            dojo.string.substitute(commentsInfoPopupFieldsCollection.Submitdate, attributes) = showNullValueAs;
+            td1.innerHTML = "Date: " + showNullValueAs;
+        } else {
+            var utcMilliseconds = Number(dojo.string.substitute(commentsInfoPopupFieldsCollection.Submitdate, attributes));
+            td1.innerHTML = "Date: " + dojo.date.locale.format(date.utcToLocal(date.utcTimestampFromMs(utcMilliseconds)), {
+                datePattern: formatDateAs,
+                selector: "date"
             });
-
-            key = null;
-            //f = null;   /* DON'T null this out, or we won't be able to detach it */
         }
-        else
-        { _elem['on' + _evtName] = _fn; }
-    },
-
-    removeEvent: function (_elem, _evtName, _fn, _useCapture) {
-        if (typeof _elem.removeEventListener != 'undefined')
-        { _elem.removeEventListener(_evtName, _fn, _useCapture); }
-        else if (typeof _elem.detachEvent != 'undefined') {
-            var key = '{FNKEY::obj_' + customMouseHandler.ieGetUniqueID(_elem) + '::evt' + _evtName + '::fn_' + _fn + '}';
-            var f = customMouseHandler.evtHash[key];
-            if (typeof f != 'undefined') {
-                _elem.detachEvent('on' + _evtName, f);
-                delete customMouseHandler.evtHash[key];
-            }
-
-            key = null;
-            //f = null;   /* DON'T null this out, or we won't be able to detach it */
-        }
-    },
-
-    mouseEnter: function (_pFn) {
-        return function (_evt) {
-            var relTarget = _evt.relatedTarget;
-            if (this == relTarget || customMouseHandler.isAChildOf(this, relTarget))
-            { return; }
-
-            _pFn.call(this, _evt);
-        }
-    },
-
-    isAChildOf: function (_parent, _child) {
-        if (_parent == _child) { return false };
-
-        while (_child && _child != _parent)
-        { _child = _child.parentNode; }
-
-        return _child == _parent;
     }
-};
+    catch (err) {
+        td1.innerHTML = "Date: " + showNullValueAs;
+    }
 
 
-//Creating dynamic scrollbar within container for target content
+    trDate.appendChild(td1);
+    var tr1 = document.createElement("tr");
+    var td2 = document.createElement("td");
+    td2.colSpan = 2;
+    td2.id = "tdComment";
+    if (isMobileDevice) {
+        td2.style.width = "100%";
+    }
+    else {
+        td2.style.width = (infoPopupWidth - 40) + "px";
+    }
+    td2.colSpan = 2;
+
+    if (dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes)) {
+        var wordCount = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/).length;
+        if (wordCount > 1) {
+            var value = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/)[0].length == 0 ? "<br>" : dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/)[0].trim();
+            for (var c = 1; c < wordCount; c++) {
+                var comment;
+                if (value != "<br>") {
+                    comment = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/)[c].trim().replace("", "<br>");
+                }
+                else {
+                    comment = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/)[c].trim();
+                }
+                value += dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(/\n/)[c].length == 0 ? "<br>" : comment;
+            }
+        }
+        else {
+            value = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes);
+        }
+        td2.innerHTML += value;
+        if (CheckMailFormat(dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes)) || dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).match("http:" || "https:")) {
+            td2.className = "tdBreakWord";
+        }
+        else {
+            td2.className = "tdBreak";
+        }
+        var x = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(" ");
+        for (var i in x) {
+            w = x[i].getWidth(15) - 50;
+            var boxWidth = (isMobileDevice) ? (dojo.window.getBox().w - 10) : (infoPopupWidth - 40);
+            if (boxWidth < w) {
+                td2.className = "tdBreakWord";
+                continue;
+            }
+        }
+    }
+    else {
+        td2.innerHTML = showNullValueAs;
+    }
+    tr1.appendChild(td2);
+    tbody.appendChild(tr1);
+    table.appendChild(tbody);
+    return table;
+}
+
+//Reset comments data
+function ResetCommentValues() {
+    dojo.byId('txtComments').value = '';
+    document.getElementById('spanCommentError').innerHTML = "";
+    document.getElementById('spanCommentError').style.display = 'none';
+    dojo.byId('divAddComment').style.display = "none";
+    dojo.byId('divCommentsView').style.display = "block";
+    dojo.byId('divCommentsList').style.display = "block";
+    SetCommentHeight();
+    if (!showCommentsTab) {
+        dojo.byId("divCommentsContent").innerHTML = "";
+    }
+}
+
 function CreateScrollbar(container, content) {
     var yMax;
     var pxLeft, pxTop, xCoord, yCoord;
@@ -807,7 +478,7 @@ function CreateScrollbar(container, content) {
     var isHandleClicked = false;
     this.container = container;
     this.content = content;
-
+    content.scrollTop = 0;
     if (dojo.byId(container.id + 'scrollbar_track')) {
         RemoveChildren(dojo.byId(container.id + 'scrollbar_track'));
         container.removeChild(dojo.byId(container.id + 'scrollbar_track'));
@@ -820,23 +491,14 @@ function CreateScrollbar(container, content) {
     else {
         scrollbar_track = dojo.byId(container.id + 'scrollbar_track');
     }
-
     var containerHeight = dojo.coords(container);
-    scrollbar_track.style.height = containerHeight.h + "px";
-    if (container.id == 'divCommentsScrollContainer')
-        scrollbar_track.style.top = containerHeight.t + 'px';
-    else
-        scrollbar_track.style.top = containerHeight.t + 'px';
-    scrollbar_track.style.right = containerHeight.l + 'px';
-
+    scrollbar_track.style.right = 5 + 'px';
     var scrollbar_handle = document.createElement('div');
     scrollbar_handle.className = 'scrollbar_handle';
     scrollbar_handle.id = container.id + "scrollbar_handle";
-
     scrollbar_track.appendChild(scrollbar_handle);
     container.appendChild(scrollbar_track);
-
-    if (content.scrollHeight <= content.offsetHeight) {
+    if ((content.scrollHeight - content.offsetHeight) <= 5) {
         scrollbar_handle.style.display = 'none';
         scrollbar_track.style.display = 'none';
         return;
@@ -846,17 +508,17 @@ function CreateScrollbar(container, content) {
         scrollbar_track.style.display = 'block';
         scrollbar_handle.style.height = Math.max(this.content.offsetHeight * (this.content.offsetHeight / this.content.scrollHeight), 25) + 'px';
         yMax = this.content.offsetHeight - scrollbar_handle.offsetHeight;
-
+        yMax = yMax - 5; //for getting rounded bottom of handle
         if (window.addEventListener) {
             content.addEventListener('DOMMouseScroll', ScrollDiv, false);
         }
-
         content.onmousewheel = function (evt) {
             console.log(content.id);
             ScrollDiv(evt);
         }
     }
 
+    //Attaching events to scrollbar components - Using mouse wheel
     function ScrollDiv(evt) {
         var evt = window.event || evt //equalize event object
         var delta = evt.detail ? evt.detail * (-120) : evt.wheelDelta //delta returns +120 when wheel is scrolled up, -120 when scrolled down
@@ -868,17 +530,18 @@ function CreateScrollbar(container, content) {
             if (y < 0) y = 0 // Limit vertical movement
             scrollbar_handle.style.top = y + "px";
             content.scrollTop = Math.round(scrollbar_handle.offsetTop / yMax * (content.scrollHeight - content.offsetHeight));
+
         }
         else {
             var y = pxTop - 10;
             if (y > yMax) y = yMax // Limit vertical movement
-            if (y < 0) y = 0 // Limit vertical movement
-            scrollbar_handle.style.top = y + "px";
+            if (y < 0) y = 2 // Limit vertical movement
+            scrollbar_handle.style.top = (y - 2) + "px";
             content.scrollTop = Math.round(scrollbar_handle.offsetTop / yMax * (content.scrollHeight - content.offsetHeight));
         }
     }
 
-    //Attaching events to scrollbar components
+    //Attaching events to scrollbar components - Click and Drag
     scrollbar_track.onclick = function (evt) {
         if (!isHandleClicked) {
             evt = (evt) ? evt : event;
@@ -908,7 +571,7 @@ function CreateScrollbar(container, content) {
         isHandleClicked = false;
     };
 
-    //Attaching events to scrollbar components
+    //Attaching events to scrollbar components - Releasing mouse click
     scrollbar_handle.onmousedown = function (evt) {
         isHandleClicked = true;
         evt = (evt) ? evt : event;
@@ -922,7 +585,6 @@ function CreateScrollbar(container, content) {
             return false;
         }
         document.onmousemove = function (evt) {
-            console.log("inside mousemove");
             evt = (evt) ? evt : event;
             evt.cancelBubble = true;
             if (evt.stopPropagation) evt.stopPropagation();
@@ -942,5 +604,550 @@ function CreateScrollbar(container, content) {
     scrollbar_handle.onmouseout = function (evt) {
         document.body.onselectstart = null;
     };
+
+    var startPos;
+    var scrollingTimer;
+
+    dojo.connect(container, "touchstart", function (evt) {
+        touchStartHandler(evt);
+    });
+
+    dojo.connect(container, "touchmove", function (evt) {
+        touchMoveHandler(evt);
+    });
+
+    dojo.connect(container, "touchend", function (evt) {
+        touchEndHandler(evt);
+    });
+
+    //Handlers for Touch Events
+    function touchStartHandler(e) {
+        startPos = e.touches[0].pageY;
+    }
+
+    function touchMoveHandler(e) {
+        var touch = e.touches[0];
+        e.cancelBubble = true;
+        if (e.stopPropagation) e.stopPropagation();
+        e.preventDefault();
+
+        pxTop = scrollbar_handle.offsetTop;
+        var y;
+        if (startPos > touch.pageY) {
+            y = pxTop + 10;
+        }
+        else {
+            y = pxTop - 10;
+        }
+
+        //setting scrollbar handle
+        if (y > yMax) y = yMax // Limit vertical movement
+        if (y < 0) y = 0 // Limit vertical movement
+        scrollbar_handle.style.top = y + "px";
+
+        //setting content position
+        content.scrollTop = Math.round(scrollbar_handle.offsetTop / yMax * (content.scrollHeight - content.offsetHeight));
+
+        scrolling = true;
+        startPos = touch.pageY;
+    }
+
+    function touchEndHandler(e) {
+        scrollingTimer = setTimeout(function () { clearTimeout(scrollingTimer); scrolling = false; }, 100);
+    }
+    //stop touch event
 }
 
+//Remove scroll bar
+function RemoveScrollBar(container) {
+    if (dojo.byId(container.id + 'scrollbar_track')) {
+        container.removeChild(dojo.byId(container.id + 'scrollbar_track'));
+    }
+}
+
+//Display the current location of the user
+function ShowMyLocation() {
+    HideBaseMapLayerContainer();
+    HideShareAppContainer();
+    HideAddressContainer();
+    navigator.geolocation.getCurrentPosition(
+		function (position) {
+		    ShowProgressIndicator();
+		    mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
+		    var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
+		    graphicCollection.addPoint(mapPoint);
+		    geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
+		        for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
+		            if (map.getLayer(baseMapLayers[bMap].Key).visible) {
+		                var bmap = baseMapLayers[bMap].Key;
+		            }
+		        }
+		        if (!map.getLayer(bmap).fullExtent.contains(newPointCollection[0].getPoint(0))) {
+		            mapPoint = null;
+		            selectedMapPoint = null;
+		            featureID = null;
+		            map.getLayer(tempGraphicsLayerId).clear();
+		            map.infoWindow.hide();
+		            HideProgressIndicator();
+		            alert(messages.getElementsByTagName("geoLocation")[0].childNodes[0].nodeValue);
+		            return;
+		        }
+		        mapPoint = newPointCollection[0].getPoint(0);
+		        map.setLevel(locatorSettings.Locators[0].ZoomLevel);
+		        map.centerAt(mapPoint);
+		        var locatorMarkupSymbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
+		        var graphic = new esri.Graphic(mapPoint, locatorMarkupSymbol, { "Locator": true }, null);
+		        map.getLayer(tempGraphicsLayerId).add(graphic);
+		        HideProgressIndicator();
+		    });
+		},
+          	function (error) {
+          	    HideProgressIndicator();
+          	    switch (error.code) {
+          	        case error.TIMEOUT:
+          	            alert(messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
+          	            break;
+          	        case error.POSITION_UNAVAILABLE:
+          	            alert(messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
+          	            break;
+          	        case error.PERMISSION_DENIED:
+          	            alert(messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
+          	            break;
+          	        case error.UNKNOWN_ERROR:
+          	            alert(messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
+          	            break;
+          	    }
+          	}, { timeout: 10000 }
+       );
+}
+
+//Handle orientation changes
+function OrientationChanged() {
+    orientationChange = true;
+    if (map) {
+        var timeout = (isMobileDevice && isiOS) ? 100 : 500;
+        map.infoWindow.hide();
+        setTimeout(function () {
+            map.reposition();
+            map.resize();
+            if (isMobileDevice) {
+                SetAddressResultsHeight();
+                SetCommentHeight();
+                SetSplashScreenHeight();
+                SetViewDetailsHeight();
+                SetCmtControlsHeight();
+                setTimeout(function () {
+                    if (selectedMapPoint) {
+                        map.setExtent(GetMobileMapExtent(selectedMapPoint));
+                    }
+                    orientationChange = false;
+                    return;
+                }, 1000);
+            }
+            else {
+                setTimeout(function () {
+                    if (selectedMapPoint) {
+                        map.setExtent(GetBrowserMapExtent(selectedMapPoint));
+                    }
+                    orientationChange = false;
+                }, 500);
+            }
+        }, timeout);
+    }
+}
+
+//Set height for splash screen
+function SetSplashScreenHeight() {
+    var height = (isMobileDevice) ? (dojo.window.getBox().h - 110) : (dojo.coords(dojo.byId('divSplashScreenContent')).h - 80);
+    dojo.byId('divSplashContent').style.height = (height + 14) + "px";
+    CreateScrollbar(dojo.byId("divSplashContainer"), dojo.byId("divSplashContent"));
+}
+
+//Hide splash screen container
+function HideSplashScreenMessage() {
+    if (dojo.isIE < 9) {
+        dojo.byId("divSplashScreenContent").style.display = "none";
+    }
+    dojo.addClass('divSplashScreenContainer', "opacityHideAnimation");
+    dojo.replaceClass("divSplashScreenContent", "hideContainer", "showContainer");
+}
+
+//Show address container with wipe-in animation
+function ShowLocateContainer() {
+    HideBaseMapLayerContainer();
+    HideShareAppContainer();
+    if (isMobileDevice) {
+        ResetSearchContainer();
+        dojo.byId('divAddressContainer').style.display = "block";
+        dojo.replaceClass("divAddressHolder", "showContainer", "hideContainer");
+    }
+    else {
+        if (dojo.coords("divAddressHolder").h > 0) {
+            HideAddressContainer();
+            dojo.byId('txtAddress').blur();
+        }
+        else {
+            ResetSearchContainer();
+            dojo.byId('divAddressHolder').style.height = "300px";
+            dojo.replaceClass("divAddressHolder", "showContainerHeight", "hideContainerHeight");
+        }
+    }
+    RemoveChildren(dojo.byId('tblAddressResults'));
+    SetAddressResultsHeight();
+}
+
+function ResetSearchContainer() {
+    if (dojo.byId("tdSearchAddress").className.trim() == "tdSearchByAddress") {
+        dojo.byId("txtAddress").value = dojo.byId("txtAddress").getAttribute("defaultAddress");
+    }
+    else {
+        dojo.byId("txtAddress").value = dojo.byId("txtAddress").getAttribute("defaultCase");
+    }
+    dojo.byId("txtAddress").style.color = "gray";
+    dojo.byId("imgSearchLoader").style.display == "none";
+    lastSearchString = dojo.byId("txtAddress").value.trim();
+}
+
+//Set height for address results and create scrollbar
+function SetAddressResultsHeight() {
+    var height = (isMobileDevice) ? (dojo.window.getBox().h - 50) : dojo.coords(dojo.byId('divAddressHolder')).h;
+    if (height > 0) {
+        dojo.byId('divAddressScrollContent').style.height = (height - ((isMobileDevice) ? 130 : 170)) + "px";
+        if (isMobileDevice) {
+            dojo.byId("tdSearchAddress").style.width = ((dojo.window.getBox().w - 100) / 3) + "px";
+            dojo.byId("tdSearchCase").style.width = ((dojo.window.getBox().w - 100) / 3) + "px";
+            dojo.byId("divAddressPlaceHolder").style.width = (dojo.window.getBox().w - 30) + "px";
+        }
+    }
+    CreateScrollbar(dojo.byId("divAddressScrollContainer"), dojo.byId("divAddressScrollContent"));
+}
+
+//Hide address container with wipe-out animation
+function HideAddressContainer() {
+    dojo.byId("imgSearchLoader").style.display = "none";
+    dojo.byId("txtAddress").blur();
+    if (isMobileDevice) {
+        setTimeout(function () {
+            dojo.byId('divAddressContainer').style.display = "none";
+        }, 500);
+        dojo.replaceClass("divAddressHolder", "hideContainerHeight", "showContainerHeight");
+    }
+    else {
+        dojo.replaceClass("divAddressHolder", "hideContainerHeight", "showContainerHeight");
+        dojo.byId('divAddressHolder').style.height = '0px';
+    }
+    isContainerVisible = false;
+}
+
+//Set height for comments and create scroll bar
+function SetCommentHeight() {
+    var height = (isMobileDevice) ? (dojo.window.getBox().h) : (dojo.coords(dojo.byId('divInfoContent')).h - 10);
+    if (height > 0) {
+        dojo.byId('divCommentsContent').style.height = (height - ((isBrowser) ? 120 : 150)) + "px";
+    }
+    CreateScrollbar(dojo.byId("divCommentsContainer"), dojo.byId("divCommentsContent"));
+    if (isMobileDevice) {
+        dojo.byId('divInfoComments').style.width = dojo.window.getBox().w - 15 + "px";
+    }
+}
+
+//Display land use comments in mobile infowindow
+function ShowInfoCommentsView() {
+    if (dojo.byId('imgDirections').getAttribute("disp") == "Details") {
+        dojo.byId('imgComments').src = "images/comments.png";
+        dojo.byId('imgComments').title = "Comments";
+        dojo.byId('imgComments').setAttribute("disp", "Comments");
+        dojo.byId('divInfoComments').style.display = "none";
+        dojo.byId('divInfoDetails').style.display = "block";
+        dojo.byId('imgDirections').style.display = "none";
+        dojo.byId('imgComments').style.display = "block";
+        SetViewDetailsHeight();
+    }
+}
+
+//Display view to add comments
+function ShowAddCommentsView() {
+    dojo.byId('divAddComment').style.display = "block";
+    dojo.byId('divCommentsView').style.display = "none";
+    dojo.byId('divCommentsList').style.display = "none";
+    SetCmtControlsHeight();
+    setTimeout(function () {
+        dojo.byId('txtComments').focus();
+    }, 50);
+}
+
+//Display comments controls in infowindow and create scrollbar
+function SetCmtControlsHeight() {
+    var height = (isMobileDevice) ? (dojo.window.getBox().h - 20) : dojo.coords(dojo.byId('divInfoContent')).h;
+    dojo.byId("divCmtIpContainer").style.height = (height - ((isTablet) ? 100 : 80)) + "px";
+    dojo.byId('divCmtIpContent').style.height = (height - ((isTablet) ? 100 : 80)) + "px";
+    CreateScrollbar(dojo.byId("divCmtIpContainer"), dojo.byId("divCmtIpContent"));
+}
+
+//Show error message while submitting blank comments
+function ShowSpanErrorMessage(controlId, message) {
+    dojo.byId(controlId).style.display = "block";
+    dojo.byId(controlId).innerHTML = message;
+}
+
+//Get width of a control when text and font size are specified
+String.prototype.getWidth = function (fontSize) {
+    var test = document.createElement("span");
+    document.body.appendChild(test);
+    test.style.visibility = "hidden";
+    test.style.fontSize = fontSize + "px";
+    test.innerHTML = this;
+    var w = test.offsetWidth;
+    document.body.removeChild(test);
+    return w;
+}
+
+//Sort comments by date
+function SortResultFeatures(a, b) {
+    var x = dojo.string.substitute(commentsInfoPopupFieldsCollection.Submitdate, a.attributes);
+    var y = dojo.string.substitute(commentsInfoPopupFieldsCollection.Submitdate, b.attributes);
+    return ((x > y) ? -1 : ((x < y) ? 1 : 0));
+}
+
+//Create the tiny url with current extent and selected feature
+function ShareLink(ext) {
+    tinyUrl = null;
+    mapExtent = GetMapExtent();
+    var url = esri.urlToObject(windowURL);
+    if (featureID) {
+        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent + "$featureID=" + featureID;
+    }
+    else {
+        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent;
+    }
+    url = dojo.string.substitute(mapSharingOptions.TinyURLServiceURL, [urlStr]);
+
+    dojo.io.script.get({
+        url: url,
+        callbackParamName: "callback",
+        load: function (data) {
+            tinyResponse = data;
+            tinyUrl = data;
+            var attr = mapSharingOptions.TinyURLResponseAttribute.split(".");
+            for (var x = 0; x < attr.length; x++) {
+                tinyUrl = tinyUrl[attr[x]];
+            }
+            if (ext) {
+                HideBaseMapLayerContainer();
+                HideAddressContainer();
+                var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
+
+                if (dojo.coords("divAppContainer").h > 0) {
+                    HideShareAppContainer();
+                }
+                else {
+                    dojo.byId('divAppContainer').style.height = cellHeight + "px";
+                    dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
+                }
+            }
+        },
+        error: function (error) {
+            alert(tinyResponse.error);
+        }
+    });
+    setTimeout(function () {
+        if (!tinyResponse) {
+            alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
+            return;
+        }
+    }, 6000);
+}
+
+//Open login page for facebook,tweet and open Email client with shared link for Email
+function Share(site) {
+    if (dojo.coords("divAppContainer").h > 0) {
+        dojo.replaceClass("divAppContainer", "hideContainerHeight", "showContainerHeight");
+        dojo.byId('divAppContainer').style.height = '0px';
+    }
+    if (tinyUrl) {
+        switch (site) {
+            case "facebook":
+                window.open(dojo.string.substitute(mapSharingOptions.FacebookShareURL, [tinyUrl]));
+                break;
+            case "twitter":
+                window.open(dojo.string.substitute(mapSharingOptions.TwitterShareURL, [tinyUrl]));
+                break;
+            case "mail":
+                parent.location = dojo.string.substitute(mapSharingOptions.ShareByMailLink, [tinyUrl]);
+                break;
+        }
+    }
+    else {
+        alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
+        return;
+    }
+}
+
+//Hide share link container
+function HideShareAppContainer() {
+    dojo.replaceClass("divAppContainer", "hideContainerHeight", "showContainerHeight");
+    dojo.byId('divAppContainer').style.height = '0px';
+}
+
+//Clear default value for text box controls
+function ClearDefaultText(e) {
+    var target = window.event ? window.event.srcElement : e ? e.target : null;
+    if (!target) return;
+    target.style.color = "#FFF";
+    target.value = '';
+}
+
+//Set default value on blur
+function ReplaceDefaultText(e) {
+    var target = window.event ? window.event.srcElement : e ? e.target : null;
+    if (!target) return;
+
+    if (dojo.byId("tdSearchCase").className == "tdSearchByCase") {
+        ResetTargetValue(target, "defaultCaseTitle", "gray");
+    }
+    else {
+        ResetTargetValue(target, "defaultAddressTitle", "gray");
+    }
+}
+
+//Set changed value for address/casename
+function ResetTargetValue(target, title, color) {
+    if (target.value == '' && target.getAttribute(title)) {
+        target.value = target.title;
+        if (target.title == "") {
+            target.value = target.getAttribute(title);
+        }
+    }
+    target.style.color = color;
+    lastSearchString = dojo.byId("txtAddress").value.trim();
+}
+
+//Reset map position
+function SetMapTipPosition() {
+    if (!orientationChange) {
+        if (map.getLayer(tempGraphicsLayerId)) {
+            if (map.getLayer(tempGraphicsLayerId).graphics.length > 0) {
+                if (map.getLayer(tempGraphicsLayerId).graphics[0].attributes) {
+                    return;
+                }
+                mapPoint = map.getLayer(tempGraphicsLayerId).graphics[0].geometry;
+                var screenPoint = map.toScreen(mapPoint);
+                screenPoint.y = map.height - screenPoint.y;
+                map.infoWindow.setLocation(screenPoint);
+                return;
+            }
+            if (selectedMapPoint) {
+                var screenPoint = map.toScreen(selectedMapPoint);
+                screenPoint.y = map.height - screenPoint.y;
+                map.infoWindow.setLocation(screenPoint);
+            }
+        }
+    }
+}
+
+//Get map Extent
+function GetMapExtent() {
+    var extents = map.extent.xmin.toString() + ",";
+    extents += map.extent.ymin.toString() + ",";
+    extents += map.extent.xmax.toString() + ",";
+    extents += map.extent.ymax.toString();
+    return (extents);
+}
+
+//Get the extent based on the map point for browser
+function GetBrowserMapExtent(mapPoint) {
+    var width = map.extent.getWidth();
+    var height = map.extent.getHeight();
+    var xmin = mapPoint.x - (width / 2);
+    var ymin = mapPoint.y - (height / 2.7);
+    var xmax = xmin + width;
+    var ymax = ymin + height;
+    return new esri.geometry.Extent(xmin, ymin, xmax, ymax, map.spatialReference);
+}
+
+//Get the extent based on the map point for mobile
+function GetMobileMapExtent(mapPoint) {
+    var width = map.extent.getWidth();
+    var height = map.extent.getHeight();
+    var xmin = mapPoint.x - (width / 2);
+    var ymin = mapPoint.y - (height / 4);
+    var xmax = xmin + width;
+    var ymax = ymin + height;
+    return new esri.geometry.Extent(xmin, ymin, xmax, ymax, map.spatialReference);
+}
+
+//Handle resize browser event handler
+function ResizeHandler() {
+    if (map) {
+        map.reposition();
+        map.resize();
+    }
+}
+
+//Refresh address container
+function RemoveChildren(parentNode) {
+    if (parentNode) {
+        while (parentNode.hasChildNodes()) {
+            parentNode.removeChild(parentNode.lastChild);
+        }
+    }
+}
+
+//Clear graphics on map
+function ClearGraphics() {
+    if (map.getLayer(tempGraphicsLayerId)) {
+        map.getLayer(tempGraphicsLayerId).clear();
+    }
+}
+
+//Get query string value of the provided key, if not found the function returns empty string
+function GetQuerystring(key) {
+    var _default;
+    if (_default == null) _default = "";
+    key = key.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
+    var regex = new RegExp("[\\?&]" + key + "=([^&#]*)");
+    var qs = regex.exec(window.location.href);
+    if (qs == null)
+        return _default;
+    else
+        return qs[1];
+}
+
+//Restrict the maximum no of characters in the text area control
+function ImposeMaxLength(Object, MaxLen) {
+    return (Object.value.length <= MaxLen);
+}
+
+//Show progress indicator
+function ShowProgressIndicator() {
+    dojo.byId('divLoadingIndicator').style.display = "block";
+}
+
+//Hide progress indicator
+function HideProgressIndicator() {
+    dojo.byId('divLoadingIndicator').style.display = "none";
+}
+
+//Validate Email in comments tab
+function CheckMailFormat(emailValue) {
+    var pattern = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,6}$/i
+    if (pattern.test(emailValue)) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+//Trim the string
+String.prototype.trim = function () { return this.replace(/^\s+|\s+$/g, ''); }
+
+//Append '...' for a string
+String.prototype.trimString = function (len) {
+    return (this.length > len) ? this.substring(0, len) + "..." : this;
+}
+
+//Convert String to Boolean
+String.prototype.bool = function () {
+    return (/^true$/i).test(this);
+};

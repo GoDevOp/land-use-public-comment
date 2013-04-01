@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,27 +16,17 @@
  | limitations under the License.
 -->
 <Messages>
-  <addressToLocate>Enter address to Locate.</addressToLocate>
-  <unableToLocate>Unable to locate specified address.</unableToLocate>
-  <noDataAvlbl>Data not available for the specified address.</noDataAvlbl>
-  <caseName>Enter Case name to search.</caseName>
-  <noMatchingCaseName>Unable to locate the specified Case name(s).</noMatchingCaseName>
-  <noBasemap>No basemap layer found. Atleast one basemap layer is required. Please contact your administrator.</noBasemap>
-  <unableToFetchComments>Unable to fetch comment.</unableToFetchComments>
-  <enterComment>Please enter comment.</enterComment>
-  <commentsLength>Comment should not exceed the maximum length of 250 characters.</commentsLength>
-  <unableToComment>Unable to add comment.</unableToComment>
-  <nameError>Invalid Name.</nameError>
-  <emailError>Email or Phone number is required.</emailError>
-  <addressError>Address field should not exceed the maximum length of 100 characters.</addressError>
-  <validEmail>Please enter valid EmailID.</validEmail>
-  <validPhone>Please enter valid Phone number.</validPhone>
-  <validPhoneLength>Please enter 10-digit Phone number.</validPhoneLength>
-  <tinyURLEngine>Bitly API is not able to generate tiny URL.</tinyURLEngine>
-  <noBrowserSupport>Browser does not support Geolocation.</noBrowserSupport>
-  <geoLocation>You are currently outside the supported area.</geoLocation>
-  <geolocationTimeout>Timeout.</geolocationTimeout>
-  <geolocationPositionUnavailable>Position unavailable.</geolocationPositionUnavailable>
-  <geolocationPermissionDenied>Permission denied.</geolocationPermissionDenied>
-  <geolocationUnKnownError>Unknown error.</geolocationUnKnownError>
+    <enterComment>Please enter comment.</enterComment>
+    <commentsLength>Comment should not exceed 250 characters.</commentsLength>
+    <tinyURLEngine>Bitly API is not able to generate tiny URL.</tinyURLEngine>
+    <geoLocation>You are currently outside the supported area.</geoLocation>
+    <geolocationTimeout>Request timed out.</geolocationTimeout>
+    <geolocationPositionUnavailable>Position unavailable.</geolocationPositionUnavailable>
+    <geolocationPermissionDenied>Permission denied.</geolocationPermissionDenied>
+    <geolocationUnKnownError>Unknown error.</geolocationUnKnownError>
+    <noAttachment>No attachments avaialable</noAttachment>
+    <addressToLocate>Enter address to locate.</addressToLocate>
+    <caseToLocate>Enter case name to locate.</caseToLocate>
+    <noSearchResults>No search results found.</noSearchResults>
+    <noMatchingCaseName>No matching case name found.</noMatchingCaseName>
 </Messages>

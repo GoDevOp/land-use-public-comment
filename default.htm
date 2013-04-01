@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset=utf-8>
     <!--
-     | Version 10.1.1
+     | Version 10.2
      | Copyright 2012 Esri
      |
      | Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,503 +18,216 @@
      | See the License for the specific language governing permissions and
      | limitations under the License.
     -->
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Public Comment</title>
-    <link rel="shortcut icon" href="images/appicon.ico" />
-    <link rel="Stylesheet" type="text/css" href="publicComments.css" />
-    <style type="text/css">
-        @import "http://serverapi.arcgisonline.com/jsapi/arcgis/2.8/js/dojo/dijit/themes/claro/claro.css";
-    </style>
+    <link id="stylesheet" href='http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/dojo/dojox/mobile/themes/iPhone/iPhone.css'
+        rel='stylesheet' />
+    <link href="styles/publicComment.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.2/js/esri/css/esri.css" />
+    <link rel="Stylesheet" id="dynamicStyleSheet" />
+    <link rel="shortcut icon" href="images/locgov-iphone-icon.ico" />
+    <link rel="apple-touch-icon" href="images/logo.png" />
+    <link rel="apple-touch-icon-precomposed" href="images/logo.png">
     <script type="text/javascript">
-        djConfig = {
+           var dojoConfig = {
+            async: false,
             parseOnLoad: true,
             mblHideAddressBar: false,
-            baseUrl: "./",
-            modulePaths: { "js": "js" }
-        }
+            packages:[
+                {name:"js",location:location.pathname.replace(/\/[^/]+$/, '') + '/js'}
+            ]
+        };
     </script>
-    <script type="text/javascript" src="http://serverapi.arcgisonline.com/jsapi/arcgis/?v=2.8"
-        djconfig="parseOnLoad:true"></script>
-    <script type="text/javascript" src="js/utils.js"></script>
-    <script type="text/javascript" src="js/locator.js"></script>
-    <script type="text/javascript" src="js/baseMapGallery.js"></script>
+    <script src="http://serverapi.arcgisonline.com/jsapi/arcgis/?v=3.2compact" type="text/javascript">
+    </script>
+    <script src="js/infoWindow.js" type="text/javascript"></script>
+    <script src="js/baseMapGallery.js" type="text/javascript"></script>
     <script src="js/modernizr-2.5.3.js" type="text/javascript"></script>
-    <script type="text/javascript">
-
-        dojo.require("esri.map");
-        dojo.require("esri.tasks.geometry");
-        dojo.require("esri.layers.FeatureLayer");
-        dojo.require("esri.tasks.query");
-        dojo.require("dojo.data.ItemFileReadStore");
-        dojo.require("dojo.fx.easing");
-        dojo.require("dijit.layout.ContentPane");
-        dojo.require("dijit.layout.BorderContainer");
-        dojo.require("dijit.form.Button");
-        dojo.require("dijit.layout.TabContainer");
-        dojo.require("dijit.form.Textarea");
-        dojo.require("dijit.TooltipDialog");
-        dojo.require("dijit.form.TextBox");
-        dojo.require("dijit.form.RadioButton");
-        dojo.require("dijit.form.ToggleButton");
-        dojo.require("dijit.Dialog");
-        dojo.require("dojox.widget.Standby");
-        dojo.require("js.config");
-        dojo.require("js.date");
-
-        var map;                                                 //ESRI map object
-        var streetMapServiceLayerid = 'streetMapServiceLayer';
-        var imageryMapServiceLayerid = 'imageryMapServiceLayer';
-        var locatorURL;                                         //Variable for storing locator URL
-        var locatorFields;                                      //Variable to store location params
-        var tempGraphicLayer = 'tempGraphicLayer';              //Temp Graphics layer ID
-        var defaultAddress;                                     //Variable for storing default address
-        var helpURL;                                            //Variable for storing Help URL
-        var devPlanLayerURL;                                    //Variable for storing Feature layer URL
-        var commentLayerURL;                                    //Variable for storing Comment layer URL
-        var commentLayerID = 'commentLayerID';                  //Temp Comments layer ID
-        var devPlanLayerID = 'devPlanLayerID';                  //Temp Feature layer ID
-        var devObjectId;                                        //Temp variable for storing feature object ID
-        var defaultCmnt;                                        //Variable for storing default Comment to display in comments tab
-        var caseId;                                             //Temp variable for storing Feature layer Case ID
-        var baseMapLayerCollection;                             //Variable for storing basemap layers
-        var hasCustomRenderer;                                  //Boolean for checking feature layer renderer
-        var rendererColor;                                      //Variable for storing feature layer renderer color
-        var geometryService;                                    //Geometry used for Geocoding
-        var mapSharingOptions;                                  //Variable to store tinyurl
-        var infoPopupFieldsCollection;                          //Variable to store infowindow field
-        var infoWindowHeader;                                   //Variable to store infowindow title
-        var submitdate;
-        var comments;
-        var hearingDate;
-        var caseID;
-        var caseName;
-        var defaultImg;
-
-        //Function to initialize the map and read data from Configuration file
-        function init() {
-
-            if (!Modernizr.geolocation) {
-                dojo.byId("tdGPS").style.display = "none";
-            }
-
-            dojo.connect(window, "onresize", function () {
-                PositionAddressList();
-                if (map) {
-                    map.resize();
-                    map.reposition();
-                }
-            });
-            ShowLoadingMessage('Loading...');
-            //to handle Enter key pressed in search
-            dojo.connect(dojo.byId("txtAddress"), 'onkeypress', function (evt) {
-                key = evt.keyCode;
-                if (key == dojo.keys.ENTER) {
-                    Locate();
-                }
-            });
-
-            esri.config.defaults.io.proxyUrl = "proxy.ashx";   //Setting to use proxy file
-            esriConfig.defaults.io.alwaysUseProxy = false;
-
-            var responseObject = new js.config();
-
-            dojo.query(".dijitDialogCloseIcon", dojo.byId('dialogLoadMessage'))[0].title = 'Close';
-            dojo.query(".dijitDialogCloseIcon", dojo.byId('dialogAlertMessage'))[0].title = 'Close';
-            dojo.byId('divLoadMessage').innerHTML = responseObject.SplashScreenMessage;
-            dijit.byId('dialogLoadMessage').show();
-
-            var mapExtent = responseObject.DefaultExtent;
-            var zoomExtent;
-            var extent = GetQuerystring('extent');
-            if (extent != "") {
-                zoomExtent = extent.split(',');
-            }
-            else {
-                zoomExtent = mapExtent.split(',');
-            }
-
-            var startExtent = new esri.geometry.Extent(parseFloat(zoomExtent[0]), parseFloat(zoomExtent[1]), parseFloat(zoomExtent[2]), parseFloat(zoomExtent[3]), new esri.SpatialReference({ wkid: 102100 }));
-            map = new esri.Map("map", { extent: startExtent });
-
-            hasCustomRenderer = responseObject.CustomRenderer;
-            rendererColor = responseObject.RendererColor;
-
-            //map.setExtent(startExtent);
-            locatorURL = responseObject.LocatorURL;
-            locatorFields = responseObject.LocatorFields;
-            defaultAddress = responseObject.LocatorDefaultAddress;
-            helpURL = responseObject.HelpURL;
-            defaultCmnt = responseObject.DefaultCmnt;
-            devPlanLayerURL = responseObject.DevPlanLayer;
-            commentLayerURL = responseObject.CommentLayer;
-            mapSharingOptions = responseObject.MapSharingOptions;
-            dojo.byId('imgApp').src = responseObject.ApplicationIcon;
-            dojo.byId('lblAppName').innerHTML = responseObject.ApplicationName;
-            submitdate = responseObject.Submitdate;
-            comments = responseObject.Comments;
-            hearingDate = responseObject.HearingDate;
-            caseID = responseObject.CaseID;
-            caseName = responseObject.CaseName;
-            baseMapLayerCollection = responseObject.BaseMapLayers;
-            CreateBaseMapComponent();
-            dojo.byId("rbAddress").checked = true;
-            dojo.connect(map, "onLoad", MapInitFunction);
-            dojo.connect(map.infoWindow, "onHide", ClearGraphics);
-            dojo.byId('txtAddress').value = responseObject.LocatorDefaultAddress;
-            dojo.byId('txtAddress').defaultText = dojo.byId('txtAddress').value;
-            PositionAddressList();
-
-            defaultImg = responseObject.LocatorMarkupSymbolPath;
-            geometryService = new esri.tasks.GeometryService(responseObject.GeometryService);
-
-            infoWindowHeader = responseObject.InfoWindowHeader;
-            infoPopupFieldsCollection = responseObject.InfoPopupFieldsCollection;
-
-            customMouseHandler.addEvent(dojo.byId('divContainer'), 'mouseleave', HideBaseMapWidget, false);
-            customMouseHandler.addEvent(dojo.byId('divSocialContainer'), 'mouseleave', ToggleApplication, false);
-
-            dojo.xhrGet(
-                    {
-                        url: "errorMessages.xml",
-                        handleAs: "xml",
-                        preventCache: true,
-                        load: function (xmlResponse) {
-                            messages = xmlResponse;
-                        }
-                    });
-        }
-
-        //Function for checking Internet Explorer Version
-        function GetInternetExplorerVersion() {
-            var rv = -1; // Return value assumes failure.
-            if (navigator.appName == 'Microsoft Internet Explorer') {
-                var ua = navigator.userAgent;
-                var re = new RegExp("MSIE ([0-9]{1,}[\.0-9]{0,})");
-                if (re.exec(ua) != null)
-                    rv = parseFloat(RegExp.$1);
-            }
-            return rv;
-        }
-
-        //Event for resizing the map
-        function MapInitFunction(map) {
-            dojo.byId('map_zoom_slider').style.top = '80px';
-            map.infoWindow.domNode.style.zIndex = 200;
-            dojo.query(".dijitDialogCloseIcon", dojo.byId('dialogAlertMessage'))[0].title = 'Close';
-
-            var infoWindow = map.infoWindow;
-            var infoBorder = dojo.query('.border', infoWindow.domNode)[0];
-            infoBorder.className = 'infoWindowBorder';
-
-            var resizeTimer;
-            dojo.connect(dijit.byId('map'), 'resize', function () {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function () {
-                    map.resize();
-                    map.reposition();
-                }, 500);
-            });
-
-            dojo.byId('divInfoPopup').className = 'hidden';
-
-            var devPlanLayer = new esri.layers.FeatureLayer(devPlanLayerURL, {
-                mode: esri.layers.FeatureLayer.MODE_SNAPSHOT,
-                outFields: ["*"],
-                displayOnPan: false
-            });
-            devPlanLayer.id = devPlanLayerID;
-
-            var todayDate = new Date();
-            var dateFrom = todayDate.getFullYear() + '/' + (todayDate.getMonth() + 1) + '/' + todayDate.getDate();
-            devPlanLayer.setDefinitionExpression("HEARINGDT >= '" + dateFrom + "'");
-
-            if (hasCustomRenderer) {
-                var lineColor = new dojo.Color();
-                lineColor.setColor(rendererColor);
-
-                var fillColor = new dojo.Color();
-                fillColor.setColor(rendererColor);
-                fillColor.a = 0.75;
-
-                var symbol = new esri.symbol.SimpleFillSymbol(esri.symbol.SimpleFillSymbol.STYLE_SOLID,
-                    new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, lineColor, 3), fillColor);
-
-                devPlanLayer.setRenderer(new esri.renderer.SimpleRenderer(symbol));
-            }
-
-            dojo.connect(devPlanLayer, "onUpdateEnd", function (err) {
-
-                HideLoadingMessage();
-                if (err) {
-                    ShowDialog("Data Error", err.message);
-                    return;
-                }
-                LoadFieldTypes(devPlanLayer.fields);
-            });
-
-
-            dojo.connect(devPlanLayer, "onClick", function (evtArgs) {
-                DisplayInfoWindow(evtArgs.graphic, evtArgs.mapPoint);
-            });
-            dojo.connect(devPlanLayer, "onMouseMove", ShowMapTip);
-            dojo.connect(devPlanLayer, "onMouseOut", CloseMapTip);
-
-            dojo.connect(map, "onExtentChange", function (extent) {
-                CloseMapTip();
-            });
-
-            dojo.connect(map, "onMouseDragEnd", function (evt) {
-                CloseMapTip();
-            });
-
-
-            var commentLayer = new esri.layers.FeatureLayer(commentLayerURL, {
-                mode: esri.layers.FeatureLayer.MODE_SELECTION,
-                outFields: ["*"]
-            });
-            commentLayer.id = commentLayerID;
-            map.addLayer(commentLayer);
-
-            var gLayer = new esri.layers.GraphicsLayer();
-            gLayer.id = tempGraphicLayer;
-
-            map.addLayer(devPlanLayer);
-            map.addLayer(gLayer);
-        }
-
-        function LoadFieldTypes(fields) {
-            for (var i = 0; i < infoPopupFieldsCollection.length; i++) {
-                for (var j = 0; j < fields.length; j++) {
-                    if (infoPopupFieldsCollection[i].FieldName == fields[j].name) {
-                        infoPopupFieldsCollection[i].Type = fields[j].type;
-                        break;
-                    }
-                }
-            }
-        }
-
-        //Function for displaying InfoPopup on Feature layer click
-        function DisplayInfoWindow(feature, mapPoint) {
-
-            ClearGraphics();
-            ToggleCommentsView(false);
-            CreateDetailsDiv(feature);
-
-            devObjectId = feature.attributes[map.getLayer(devPlanLayerID).objectIdField];
-
-            caseId = feature.attributes[caseID];
-
-            RemoveChildren(document.getElementById("divAttachmentsData"));
-            map.getLayer(devPlanLayerID).queryAttachmentInfos(devObjectId, GetAttachmentInfo, null);
-            RemoveChildren(document.getElementById("divCommentData"));
-            FetchComments();
-            ShowInfoPopUp(feature, mapPoint);
-            CreateScrollbar(dojo.byId('divDetailsScrollContainer'), dojo.byId('divDetailsScrollContent'));
-
-        }
-
-        function CreateDetailsDiv(feature) {
-            var detailsDiv = document.getElementById("divDetails");
-            RemoveChildren(detailsDiv);
-            //used set timeout due to RemoveChildren
-
-            var table = document.createElement("table");
-            var tBody = document.createElement("tbody");
-            var devPlanLayer = map.getLayer(devPlanLayerID);
-            for (var i = 0; i < infoPopupFieldsCollection.length; i++) {
-                var tr = document.createElement("tr");
-                tr.vAlign = "top";
-                var td1 = document.createElement("td");
-                td1.className = "infowindowTd1";
-                var td2 = document.createElement("td");
-                td2.className = "infowindowTd2";
-                if (infoPopupFieldsCollection[i].DisplayText) {
-                    td1.innerHTML = infoPopupFieldsCollection[i].DisplayText + ":";
-                }
-                else {
-                    for (var d = 0; d < devPlanLayer.fields.length; d++) {
-                        if (devPlanLayer.fields[d].name == infoPopupFieldsCollection[i].FieldName) {
-                            td1.innerHTML = devPlanLayer.fields[d].alias + ':';
-                            break;
-                        }
-                    }
-                }
-                if (infoPopupFieldsCollection[i].Type == "esriFieldTypeDate") {
-                    var date = new js.date();
-                    var utcMilliseconds = Number(feature.attributes[infoPopupFieldsCollection[i].FieldName]);
-                    td2.innerHTML = date.utcTimestampFromMs(utcMilliseconds).toDateString().substring(4);
-                }
-                else {
-                    td2.innerHTML = feature.attributes[infoPopupFieldsCollection[i].FieldName];
-                }
-                tr.appendChild(td1);
-                tr.appendChild(td2);
-                tBody.appendChild(tr);
-            }
-            table.appendChild(tBody);
-
-            var scrollbar_container = document.createElement('div');
-            scrollbar_container.className = "scrollbar_container";
-            scrollbar_container.id = "divDetailsScrollContainer";
-
-            var content = document.createElement("div");
-            content.className = 'scrollbar_content';
-            content.id = "divDetailsScrollContent";
-
-            content.appendChild(table);
-            scrollbar_container.appendChild(content);
-
-            detailsDiv.appendChild(scrollbar_container);
-        }
-
-        //Function for showing InfoPopup
-        function ShowInfoPopUp(feature, mapPoint) {
-            var spanTitle = document.createElement("span");
-            spanTitle.classname = "spanInfoWindowTitle";
-            var titleValue = feature.attributes[infoWindowHeader];
-            var title = dojo.string.substitute(titleValue);
-            var tri = 50;
-            if (title.length > tri) {
-                spanTitle.innerHTML = title.trimString(tri);
-                spanTitle.title = title;
-            }
-            else {
-                spanTitle.innerHTML = title;
-            }
-            map.infoWindow.setTitle(spanTitle);
-            var mainTabContainer = CreateContent();
-            map.infoWindow.setContent(mainTabContainer.domNode);
-            var windowPoint = map.toScreen(mapPoint);
-            map.infoWindow.resize(450, 295);
-            map.infoWindow.show(windowPoint, map.getInfoWindowAnchor(windowPoint));
-            mainTabContainer.resize();
-        }
-        dojo.addOnLoad(init);
-
-    </script>
+    <script src="js/homePage.js" type="text/javascript"></script>
+    <script src="js/locator.js" type="text/javascript"></script>
+    <script src="js/utils.js" type="text/javascript"></script>
 </head>
-<body class="claro" onkeydown="if (event.keyCode==dojo.keys.TAB) { if (dijit.byId('dialogLoadMessage').open || dijit.byId('dialogAlertMessage').open) {return event.keyCode!=dojo.keys.TAB;}}">
-    <div id="divMainContainer" dojotype="dijit.layout.BorderContainer" design="headline"
-        gutters="false" style="width: 100%; height: 100%; position: relative">
-        <div id="map" class="map" region="center" dojotype="dijit.layout.ContentPane" style="position: relative;
-            overflow: hidden; border: double silver; padding: 0px !important; width: 100%;
-            height: 100%; padding: 0; margin: 0; border: 0;">
+<body onorientationchange="OrientationChanged();">
+    <div id="divMainContainer" style="width: 100%; height: 100%;">
+        <div id="map" style="width: 100%; height: 100%;">
         </div>
     </div>
-    <div class="header_container">
-        <div class="headerBackground">
-        </div>
-        <div class="headerIcon">
-            <img id="imgApp" class="imgApp" style="background-color: transparent;" />
-        </div>
-        <div class="header">
-            <table style="height: 100%;">
-                <tr valign="middle">
-                    <td style="width: 45%;">
-                        <table>
+    <div id="divSplashScreenContainer" class="divSplashScreenContainer" style="display: none;">
+        <table style="width: 100%; height: 100%;">
+            <tr align="center" valign="middle">
+                <td>
+                    <div id="divSplashScreenContent" class="divSplashScreenContent">
+                        <table style="width: 100%;">
                             <tr>
-                                <td id="lblAppName" class="lblAppName" style="color: White;">
+                                <td>
+                                    <div id="divSplashContainer" class="divSplashContainer" style="margin-top: 10px;">
+                                        <div id="divSplashContent" class="divSplashContent">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td align="center">
+                                    <div style="width: 75px; margin-top: 7px;" class="customButton" onclick="HideSplashScreenMessage();">
+                                        <div class="customButtonInner">
+                                            <table style="width: 100%; height: 100%;">
+                                                <tr>
+                                                    <td align="center" valign="middle">
+                                                        <center>
+                                                            OK</center>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
-                    </td>
-                </tr>
-            </table>
-        </div>
-        <div class="headerContent" style="vertical-align: middle;" align="right">
-            <table style="height: 100%;">
-                <tr>
-                    <td align="right" valign="middle">
-                        <table>
-                            <tr>
-                                <td valign="bottom">
-                                    <input type="radio" id="rbAddress" checked="checked" onclick="ToggleSearch(this);"
-                                        name="rbSearchGroup" />
-                                </td>
-                                <td align="left" valign="bottom">
-                                    <span id="spanAddress" class="text" onclick="Toggle(this);">Find address:
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td valign="middle">
-                                    <input type="radio" id="rbCaseName" onclick="ToggleSearch(this);" name="rbSearchGroup" />
-                                </td>
-                                <td align="left" valign="middle">
-                                    <span id="spanCaseName" class="disabledText" onclick="Toggle(this);">Find by case
-                                        name: </span>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td style="width: 270px;" align="left" valign="middle">
-                        <div style="border: 1px solid  #7D7D7D; position: relative; width: 252px; background-color: Black;">
-                            <input type="text" id="txtAddress" class="textBox" />
-                            <img id="imgLocateAddress" class="imgLocateAddress" src="images/locate.png" alt=""
-                                onclick="Locate()" title="Search" style="width: 30px; height: 30px; right: 0px;
-                                position: absolute; cursor: pointer; top: 0px;" />
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divLogo" class="divLogo">
+        <table style="width: 100%; height: 100%;" cellpadding="2px" cellspacing="2px">
+            <tr align="left" style="margin-top: 0px">
+                <td valign="top">
+                    <img id="imgApp" class="imgApp" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div class="divApplicationHeader" align="right">
+        <table cellpadding="0px" cellspacing="0px" class="tableHeader">
+            <tr>
+                <td id="lblAppName" class="lblAppName" align="left">
+                </td>
+                <td align="right">
+                    <table>
+                        <tr>
+                            <td align="center" id="Td1" class="tdHeader">
+                                <img alt="Settings" src="images/locate.png" class="imgOptions" title="Search" onclick="ShowLocateContainer();"
+                                    style="cursor: pointer" />
+                            </td>
+                            <td align="center" id="tdGeolocation" class="tdHeader">
+                                <img alt="Settings" src="images/gps.png" id="imgGeolocation" class="imgOptions" title="Locate"
+                                    onclick="ShowMyLocation();" style="cursor: pointer" />
+                            </td>
+                            <td align="center" id="tdBaseMap">
+                            </td>
+                            <td align="center" class="tdHeader">
+                                <img src="images/imgsocialmedia.png" class="imgOptions" title="Share" onclick="ShareLink(true);"
+                                    style="cursor: pointer" />
+                            </td>
+                            <td align="center" id="help" class="tdHeader">
+                                <img src="images/help.png" title="Help" id="imgHelp" class="imgOptions" style="cursor: pointer" />
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divAddressContainer" align="center" class="divAddressContainer hideContainerHeight"
+        style="display: none">
+        <table cellpadding="0px" cellspacing="0px" style="width: 100%; height: 100%;">
+            <tr align="center" valign="middle">
+                <td>
+                    <div id="divAddressHolder" class="hideContainerHeight divAddressHolder">
+                        <div id="divAddressContent" class="divAddressContent">
+                            <table class="tblHeader" style="width: 100%;">
+                                <tr style="height: 30px;" align="center" valign="top">
+                                    <td class="tdHeader" align="left" valign="middle" style="padding-left: 8px;">
+                                        Search
+                                    </td>
+                                    <td style="width: 10%;" align="right">
+                                        <img src="images/close.png" class="imgOptions" title="Close" style="cursor: pointer;
+                                            padding: 0px" onclick="HideAddressContainer();" />
+                                    </td>
+                                </tr>
+                            </table>
+                            <div id="divAddressResultContainer" style="margin: 0px 0px 0px 8px;">
+                                <table cellpadding="0" cellspacing="0" style="color: #fff; width: 100%;">
+                                    <tr>
+                                        <td>
+                                            <table style="width: 100%; margin: 5px 5px 8px -2px;">
+                                                <tr>
+                                                    <td id="tdSearchAddress" class="tdSearchByAddress" onclick="SearchByAddress();">
+                                                    </td>
+                                                    <td id="tdSearchCase" class="tdSearchByUnSelectedCase" onclick="SearchByCase();">
+                                                    </td>
+                                                    <td align="center">
+                                                        <img src="images/locate.png" id="imgLocate" class="imgLocate" style="cursor: pointer;"
+                                                            title="Locate" onclick="LocateAddress();" />
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left">
+                                            <div id="divAddressPlaceHolder" class="divAddressPlaceHolder" align="left">
+                                                <input type="text" id="txtAddress" class="txtAddress" onfocus="if(this.setSelectionRange)this.setSelectionRange(this.value.length, this.value.length);" />
+                                            </div>
+                                            <div id="divAddressList" class="divAddressList">
+                                                <div id="divAddressScrollContainer" class="divAddressScrollContainer" align="left">
+                                                    <div id="divAddressScrollContent" class="divAddressScrollContent" style="height: 130px">
+                                                        <table id="tblAddressResults" cellpadding="0" cellspacing="2" style="width: 100%;">
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <table style="height: 100%; width: 100%;">
+                                                <tr>
+                                                    <td align="center">
+                                                        <img id="imgSearchLoader" src="images/loader.gif" class="imgSearchLoader" />
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
                         </div>
-                    </td>
-                    <td id="tdGPS" align="center" style="width: 40px;" valign="middle">
-                        <button dojotype="dijit.form.ToggleButton" id="btnGeolocation" title="Location" onclick="ShowMyLocation(this);"
-                            style="cursor: pointer;">
-                            <img id="imgGPS" src="images/imggeolocation.png" title="Location" width="30px" height="30px"
-                                alt="" />
-                        </button>
-                    </td>
-                    <td align="center" style="width: 40px;" valign="middle">
-                        <button dojotype="dijit.form.ToggleButton" id="btnImgBaseMap" title="Switch Basemap"
-                            onclick="ShowHideBaseMapComponent();" style="cursor: pointer;">
-                            <img id="imgBaseMap" src="images/imgbasemap.png" title="Switch Basemap" style="height: 30px;
-                                width: 30px;" alt="" />
-                        </button>
-                    </td>
-                    <td align="center" style="width: 40px;" valign="middle">
-                        <button dojotype="dijit.form.ToggleButton" id="btnImgApplink" title="Share Map" onclick="ToggleApplication();"
-                            style="cursor: pointer;">
-                            <img src="images/imgsocialmedia.png" title="Share Map" width="30px" height="30px" />
-                        </button>
-                    </td>
-                    <td align="center" style="width: 40px;" valign="middle">
-                        <button dojotype="dijit.form.ToggleButton" id="btnImgHelp" title="Help" onclick="ShowHelp()">
-                            <img id="imgHelp" src="images/help.png" title="Help" width="30px" height="30px" />
-                        </button>
-                    </td>
-                </tr>
-            </table>
-        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
-    <div id="divBaseMapTitleContainer" class="divBaseMapTitleContainer" style="display: none;
-        width: 250px; height: auto; position: absolute; z-index: 100;">
-        <div id="divContainer" dojotype="dijit.layout.ContentPane" class="divBaseMapContainer">
-            <div id="layerList">
+    <div id="divLayerContainer" class="divLayerContainer hideContainerHeight">
+        <div id="divLayerHolder" class="divLayerHolder">
+            <div id="divLayerContainerHolder" style="position: relative">
+                <div id="divLayerContentHolder" class="divLayerContentHolder" style="position: absolute;
+                    overflow: hidden">
+                    <div id="layerList">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <div id="divAddressContainer" class="divAddressContainer" style="display: none; position: absolute;
-        z-index: 100; background-color: transparent; border: 1px solid; width: 250px;">
-    </div>
-    <div id="divAppContainer" style="display: none; position: absolute; top: 47px; width: 130px;
-        right: 13px; height: auto; z-index: 100;">
-        <div dojotype="dijit.layout.ContentPane" id="divSocialContainer" class="divSocialContainer">
+    <div id="divAppContainer" class="divAppContainer hideContainerHeight">
+        <div id="divAppHolder" class="divAppHolder">
             <div id="divAppContent">
-                <table cellpadding="0" cellspacing="0">
+                <table cellpadding="0px" cellspacing="0px">
                     <tr>
                         <td>
-                            <table cellpadding="2" cellspacing="2">
+                            <table cellpadding="2px" cellspacing="2px">
                                 <tr>
-                                    <td align="center" colspan="3" style="color: #F5F5DC; font-size: 11px;">
+                                    <td align="center" colspan="3" style="color: white;">
                                         Share this map
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="width: 15px;" align="center">
-                                        <img title="Facebook" class="imgSocialMediaIcon" src="images/img_facebook.png" onclick="ShareLink('facebook');" />
+                                    <td style="width: 30px;" align="center" id="tdFacebook">
+                                        <img title="Facebook" class="imgShare" id="imgFacebook" src="images/img_facebook.png"
+                                            onclick="Share('facebook')" />
                                     </td>
-                                    <td style="width: 15px;" align="center">
-                                        <img title="Twitter" class="imgSocialMediaIcon" src="images/img_twitter.png" onclick="ShareLink('twitter');" />
+                                    <td style="width: 30px;" align="center" id="tdTwitter">
+                                        <img title="Twitter" class="imgShare" id="imgTwitter" src="images/img_twitter.png"
+                                            onclick="Share('twitter')" />
                                     </td>
-                                    <td style="width: 15px;" align="center">
-                                        <img title="Email" class="imgSocialMediaIcon" src="images/img_email.png" onclick="ShareLink('mail');" />
+                                    <td style="width: 30px;" align="center" id="tdMail">
+                                        <img title="Email" class="imgShare" id="imgMail" src="images/img_email.png" onclick="Share('mail')" />
                                     </td>
                                 </tr>
                             </table>
@@ -524,156 +237,133 @@
             </div>
         </div>
     </div>
-    <div id="divInfoPopup">
-        <div id="divTabs">
-            <div id="divDetails">
-            </div>
-            <div id="divAttachments">
-                <div id="divAttachmentsData">
-                </div>
-            </div>
-            <div id="divComments">
-                <div id="divCommentInput">
-                    <div>
-                        <table onclick="ToggleCommentsView(true);" style="cursor: pointer;">
-                            <tr>
-                                <td>
-                                    <img style="border: none" src="images/commentadd.png" width="30" height="30" />
+    <div id="divInfoContainer" align="center" class="divInfoContainer opacityHideAnimation">
+        <table cellpadding="0px" cellspacing="0px" style="width: 100%; height: 100%;">
+            <tr align="center" valign="middle">
+                <td>
+                    <div align="left" id="divInfoContent" class="hideContainer divInfoContent">
+                        <table id="tblHeader" class="infotblHeader" style="width: 100%; padding: 1px" cellpadding="0px"
+                            cellspacing="0px">
+                            <tr style="height: 30px;" align="center" valign="top">
+                                <td align="left" id="tdLabel" valign="middle" style="padding-left: 7px; width: 98%">
+                                    <span id="tdInfoHeader" class="tdInfoHeader"></span>
                                 </td>
-                                <td>
-                                    <span>Add Comment</span>
+                                <td id="tdImages">
+                                    <table cellpadding="0px" cellspacing="0px" align="right">
+                                        <tr>
+                                            <td id="tdDirections" align="right">
+                                                <img class="infoOptions" id="imgDirections" onclick="ShowInfoCommentsView();" />
+                                            </td>
+                                            <td id="tdComments" align="right">
+                                                <img src="images/comments.png" class="infoOptions" title="Comments" id="imgComments"
+                                                    onclick="ShowCommentsView();" />
+                                            </td>
+                                            <td align="right">
+                                                <img src="images/close.png" class="infoOptions" title="Close" style="cursor: pointer;"
+                                                    onclick="HideInfoContainer();" />
+                                            </td>
+                                        </tr>
+                                    </table>
                                 </td>
                             </tr>
                         </table>
-                    </div>
-                </div>
-                <div id="divCommentData" class='comments_scrollbar_container'>
-                </div>
-                <div id="divAddComment" style="display: none;">
-                    <table style="font-family: Verdana; font-size: 11px; margin-left: 7px; margin-top: 3px;
-                        width: 200px;" cellpadding="0" cellspacing="0">
-                        <tr style="height: 35px;">
-                            <td>
-                                Name:
-                            </td>
-                            <td>
-                                <input type="text" dojotype="dijit.form.TextBox" id="txtName" />
-                            </td>
-                            <td class="tdwidth" align="right">
-                                Email:
-                            </td>
-                            <td align='right'>
-                                <input dojotype="dijit.form.TextBox" id="txtEmail" type="text" />
-                            </td>
-                        </tr>
-                        <tr style="height: 40px;">
-                            <td class="tdwidth">
-                                Address:
-                            </td>
-                            <td>
-                                <input dojotype="dijit.form.TextBox" id="txtCmntAddress" type="text" />
-                            </td>
-                            <td class="tdwidth" align="right">
-                                Phone:
-                            </td>
-                            <td align='right'>
-                                <input dojotype="dijit.form.TextBox" id="txtPhone" type="text" />
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="height: 5px;">
-                            </td>
-                        </tr>
-                        <tr style="height: 45px; width: 160px;">
-                            <td class="tdwidth" valign="top">
-                                Comment:
-                            </td>
-                            <td colspan="3">
-                                <textarea id="txtComments" class='txtArea'></textarea>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" style="height: 15px;">
-                            </td>
-                        </tr>
-                        <tr style="height: 20px;">
-                            <td colspan="4" valign="middle" align="left">
-                                <span id="commentError" class="commentError"></span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td align="center" colspan="4">
-                                <table>
-                                    <tr style="height: 40px; vertical-align: bottom;">
-                                        <td align="right">
-                                            <span class="rounded" onclick="AddComment();">Submit</span>
+                        <div id="divInfoDetails" class="divInfoDetails" style="color: #fff;">
+                            <div id="divInfoDetailsScroll" class="divInfoDetailsScroll">
+                                <table id="tblInfoDetails" cellpadding="0px" cellspacing="0px" style="width: 100%;
+                                    padding-top: 5px; padding-left: 2px">
+                                </table>
+                            </div>
+                        </div>
+                        <div id="divInfoComments" class="divInfoComments" style="color: #fff; display: none;">
+                            <div align="left" id="divCommentsView">
+                                <table cellpadding="0px" cellspacing="0px" style="height: 35px; cursor: pointer;"
+                                    onclick="ShowAddCommentsView();">
+                                    <tr align="left">
+                                        <td style="width: 37px;">
+                                            <img title="" src="images/addcomment.png" class="imgOptions">
                                         </td>
-                                        <td align="left">
-                                            <span class="rounded" onclick="ToggleCommentsView(false);">Cancel</span>
+                                        <td>
+                                            Add Comment
                                         </td>
                                     </tr>
                                 </table>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div id="dialogAlertMessage" class="dialogAlertMessage" dojotype="dijit.Dialog" style="width: 300px;
-        height: 120px;">
-        <table style="width: 100%;">
-            <tr>
-                <td align="center">
-                    <div id="divMessage" style="text-align: left">
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                </td>
-            </tr>
-            <tr>
-                <td align="center">
-                    <div style="height: 25px; margin-top: 8px">
-                        <div class="rounded" id="divOKButton" onclick="CloseDialog();">
-                            OK</div>
+                            </div>
+                            <div id="divCommentsList">
+                                <div id="divCommentsContainer" class="divCommentsContainer">
+                                    <div id="divCommentsContent" class="divCommentsContent" style="overflow: hidden">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="divAddComment" style="display: none; margin: 2px;">
+                                <div id="divCmtIpContainer" class="divCmtIpContainer">
+                                    <div id="divCmtIpContent" class="divCmtIpContent" style="overflow: hidden; width: 100%">
+                                        <table cellpadding="2px" cellspacing="0px" style="width: 100%;">
+                                            <tr valign="top">
+                                                <td align="left" colspan="2">
+                                                    Comment
+                                                </td>
+                                            </tr>
+                                            <tr valign="top">
+                                                <td colspan="2">
+                                                    <textarea placeholder="Enter comment" maxlength="250" class="txtArea" id="txtComments"
+                                                        onkeypress="if(dojo.isIE){return ImposeMaxLength(this, 249);}else{return ImposeMaxLength(this, 250);}"></textarea>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 25px;">
+                                                <td colspan="2" align="left" style="height: 20px;">
+                                                    <span id="spanCommentError" style="display: none; color: Yellow; margin-top: 3px;
+                                                        word-wrap: break-word;"></span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td align="center" colspan="2">
+                                                    <table>
+                                                        <tr>
+                                                            <td>
+                                                                <div style="width: 75px;" class="customButton" id="btnAddComments" onclick="AddPublicComment();">
+                                                                    <div class="customButtonInner">
+                                                                        <table style="width: 100%; height: 100%;">
+                                                                            <tr>
+                                                                                <td align="center" valign="middle">
+                                                                                    Submit
+                                                                                </td>
+                                                                            </tr>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div style="width: 75px;" class="customButton" onclick="ResetCommentValues();">
+                                                                    <div class="customButtonInner">
+                                                                        <table cellpadding="0px" cellspacing="0px" style="width: 100%; height: 100%;">
+                                                                            <tr>
+                                                                                <td align="center" valign="middle">
+                                                                                    Cancel
+                                                                                </td>
+                                                                            </tr>
+                                                                        </table>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </td>
             </tr>
         </table>
     </div>
-    <div id="divLoadingIndicator" class="divLoadingIndicator">
-        <table style="width: 100%; height: 100%;">
-            <tr>
-                <td align="center">
-                    <table>
-                        <tr>
-                            <td align="center">
-                                <img src="images/loading.gif" />
-                            </td>
-                            <td id="loadingMessage">
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <div id="dojoStandBy" dojotype="dojox.widget.Standby" color="black">
-    </div>
-    <div id="dialogLoadMessage" class="dialogLoadMessage" dojotype="dijit.Dialog" style="width: 350px;">
-        <table>
-            <tr>
+    <div id="divLoadingIndicator" class="divLoadingIndicator" style="display: block;">
+        <table cellpadding="0px" cellspacing="0px" style="width: 100%; height: 100%;">
+            <tr align="center" valign="middle">
                 <td>
-                    <div id="divLoadMessage" style="background: black; color: White;">
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td align="center">
-                    <div class="rounded" onclick="dijit.byId('dialogLoadMessage').hide();">
-                        OK</div>
+                    <img src="images/loader.gif" />
                 </td>
             </tr>
         </table>

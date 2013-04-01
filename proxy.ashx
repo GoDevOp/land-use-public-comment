@@ -1,6 +1,6 @@
 <%@ WebHandler Language="C#" Class="proxy" %>
 /*
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,11 @@ public class proxy : IHttpHandler {
         }
 
         System.Net.HttpWebRequest req = (System.Net.HttpWebRequest)System.Net.HttpWebRequest.Create(uri);
+
+        //code added to use default credentials for authenticating the request via proxy
+        req.UseDefaultCredentials = true;
+        req.Credentials = System.Net.CredentialCache.DefaultCredentials;
+
         req.Method = context.Request.HttpMethod;
         req.ServicePoint.Expect100Continue = false;
 

@@ -1,5 +1,5 @@
 ﻿/** @license
- | Version 10.1.1
+ | Version 10.2
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,45 +14,36 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
-var containerHeight = 0;
-
-//Function for adding the basemap layers
+//Create basemap components
 function CreateBaseMapComponent() {
-    if (baseMapLayerCollection.length != 0) {
-        for (var i = 0; i < baseMapLayerCollection.length; i++) {
-            map.addLayer(CreateBaseMapLayer(baseMapLayerCollection[i].MapURL, baseMapLayerCollection[i].Key, (i == 0) ? true : false));
-        }
-
-        if (baseMapLayerCollection.length == 1) {
-            dojo.byId('divBaseMapTitleContainer').style.display = 'none';
-            HideLoadingMessage();
-            return;
-        }
-        var layerList = dojo.byId('layerList');
-
-        for (var i = 0; i < Math.ceil(baseMapLayerCollection.length / 2); i++) {
-            var previewDataRow = document.createElement("tr");
-            containerHeight += 100;
-            if (baseMapLayerCollection[(i * 2)]) {
-                var layerInfo = baseMapLayerCollection[(i * 2)];
-                layerList.appendChild(CreateBaseMapElement(layerInfo));
-            }
-
-            if (baseMapLayerCollection[(i * 2) + 1]) {
-                var layerInfo = baseMapLayerCollection[(i * 2) + 1];
-                layerList.appendChild(CreateBaseMapElement(layerInfo));
-            }
-        }
-
-        dojo.addClass(dojo.byId("imgThumbNail" + baseMapLayerCollection[0].Key), "selectedBaseMap");
+    for (var i = 0; i < baseMapLayers.length; i++) {
+        map.addLayer(CreateBaseMapLayer(baseMapLayers[i].MapURL, baseMapLayers[i].Key, (i == 0) ? true : false));
     }
-    else {
-        ShowDialog('Error', messages.getElementsByTagName("noBasemap")[0].childNodes[0].nodeValue);
-        HideLoadingMessage();
+    var layerList = dojo.byId('layerList');
+    for (var i = 0; i < Math.ceil(baseMapLayers.length / 2); i++) {
+        var previewDataRow = document.createElement("tr");
+
+        if (baseMapLayers[(i * 2)]) {
+            var layerInfo = baseMapLayers[(i * 2)];
+            layerList.appendChild(CreateBaseMapElement(layerInfo));
+        }
+
+        if (baseMapLayers[(i * 2) + 1]) {
+            var layerInfo = baseMapLayers[(i * 2) + 1];
+            layerList.appendChild(CreateBaseMapElement(layerInfo));
+        }
+    }
+    if (!(dojo.isIE < 9)) {
+        dojo.addClass(dojo.byId("imgThumbNail" + baseMapLayers[0].Key), "selectedBaseMap");
+        if (dojo.isIE) {
+            dojo.byId("imgThumbNail" + baseMapLayers[0].Key).style.marginTop = "-5px";
+            dojo.byId("imgThumbNail" + baseMapLayers[0].Key).style.marginLeft = "-5px";
+            dojo.byId("spanBaseMapText" + baseMapLayers[0].Key).style.marginTop = "5px";
+        }
     }
 }
 
-//Function for changing the map on selection
+//Create basemap images with respective titles
 function CreateBaseMapElement(baseMapLayerInfo) {
     var divContainer = document.createElement("div");
     divContainer.className = "baseMapContainerNode";
@@ -63,83 +54,83 @@ function CreateBaseMapElement(baseMapLayerInfo) {
     imgThumbnail.setAttribute("layerId", baseMapLayerInfo.Key);
     imgThumbnail.onclick = function () {
         ChangeBaseMap(this);
+        ShowBaseMaps();
     };
     var spanBaseMapText = document.createElement("span");
-    var spanBreak = document.createElement("br");
     spanBaseMapText.id = "spanBaseMapText" + baseMapLayerInfo.Key;
     spanBaseMapText.className = "basemapLabel";
     spanBaseMapText.innerHTML = baseMapLayerInfo.Name;
     divContainer.appendChild(imgThumbnail);
-    divContainer.appendChild(spanBreak);
     divContainer.appendChild(spanBaseMapText);
     return divContainer;
 }
 
-//Function for displaying the selected map and hiding previous map
-function ChangeBaseMap(spanControl) {
-    HideMapLayers();
-    var key = spanControl.getAttribute('layerId');
-    for (var i = 0; i < baseMapLayerCollection.length; i++) {
-        dojo.removeClass(dojo.byId("imgThumbNail" + baseMapLayerCollection[i].Key), "selectedBaseMap");
-        dojo.removeClass(dojo.byId("imgThumbNail" + baseMapLayerCollection[i].Key), "selectedBaseMapIE");
-        dojo.byId("imgThumbNail" + baseMapLayerCollection[i].Key).style.marginTop = "0px";
-        dojo.byId("imgThumbNail" + baseMapLayerCollection[i].Key).style.marginLeft = "0px";
-        dojo.byId("spanBaseMapText" + baseMapLayerCollection[i].Key).style.marginTop = "1px";
-        if (baseMapLayerCollection[i].Key == key) {
-
-            dojo.addClass(dojo.byId("imgThumbNail" + baseMapLayerCollection[i].Key), "selectedBaseMap");
-            var layer = map.getLayer(baseMapLayerCollection[i].Key);
-            ShowHideBaseMapComponent();
-            layer.show();
-        }
-    }
-}
-
-
-//Function for displaying a map on window
+//Create basemap layer on the map
 function CreateBaseMapLayer(layerURL, layerId, isVisible) {
     var layer = new esri.layers.ArcGISTiledMapServiceLayer(layerURL, { id: layerId, visible: isVisible });
     return layer;
 }
 
-//Function for hiding a map on window
+//Toggle basemap layer
+function ChangeBaseMap(spanControl) {
+    HideMapLayers();
+    var key = spanControl.getAttribute('layerId');
+
+    for (var i = 0; i < baseMapLayers.length; i++) {
+        dojo.removeClass(dojo.byId("imgThumbNail" + baseMapLayers[i].Key), "selectedBaseMap");
+        if (dojo.isIE) {
+            dojo.byId("imgThumbNail" + baseMapLayers[i].Key).style.marginTop = "0px";
+            dojo.byId("imgThumbNail" + baseMapLayers[i].Key).style.marginLeft = "0px";
+            dojo.byId("spanBaseMapText" + baseMapLayers[i].Key).style.marginTop = "0px";
+        }
+        if (baseMapLayers[i].Key == key) {
+            if (!(dojo.isIE < 9)) {
+                dojo.addClass(dojo.byId("imgThumbNail" + baseMapLayers[i].Key), "selectedBaseMap");
+                if (dojo.isIE) {
+                    dojo.byId("imgThumbNail" + baseMapLayers[i].Key).style.marginTop = "-5px";
+                    dojo.byId("imgThumbNail" + baseMapLayers[i].Key).style.marginLeft = "-5px";
+                    dojo.byId("spanBaseMapText" + baseMapLayers[i].Key).style.marginTop = "5px";
+                }
+            }
+            var layer = map.getLayer(baseMapLayers[i].Key);
+            layer.show();
+        }
+    }
+}
+
+//Hide layers
 function HideMapLayers() {
-    for (var i = 0; i < baseMapLayerCollection.length; i++) {
-        var layer = map.getLayer(baseMapLayerCollection[i].Key);
+    for (var i = 0; i < baseMapLayers.length; i++) {
+        var layer = map.getLayer(baseMapLayers[i].Key);
         if (layer) {
             layer.hide();
         }
     }
 }
 
-//Function for showing and hiding basemap container
-function ShowHideBaseMapComponent() {
-    dojo.byId('imgGPS').src = "images/imggeolocation.png";
-    var gpsButton = dijit.byId('btnGeolocation');
-    gpsButton.attr("checked", false);
-    var node = dojo.byId('divBaseMapTitleContainer');
-    var anim = dojo.byId('divContainer');
-    var divNode = dojo.byId('divAddressContainer');
-    if (dojo.coords(divNode).h > 0) {
-        WipeOutControl(divNode, 500);
-    }
-    var appNode = dojo.byId('divAppContainer');
-    if (dojo.coords(appNode).h > 0) {
-        ToggleApplication();
-    }
-    if (dojo.coords(node).h > 0) {
-        WipeOutControl(node, 500);
+//Animate basemap container
+function ShowBaseMaps() {
+    HideShareAppContainer();
+    HideAddressContainer();
+    var cellHeight = (isTablet) ? 100 : 115;
+    if (dojo.coords("divLayerContainer").h > 0) {
+        HideBaseMapLayerContainer();
     }
     else {
-        WipeInControl(node, node.style.height, 500);
+        dojo.byId('divLayerContainer').style.height = cellHeight + "px";
+        dojo.byId('divLayerContentHolder').style.height = (cellHeight - 10) + "px";
+        dojo.byId('divLayerContentHolder').style.top = "0px";
+        dojo.replaceClass("divLayerContainer", "showContainerHeight", "hideContainerHeight");
     }
+    setTimeout(function () {
+        CreateScrollbar(dojo.byId("divLayerContainerHolder"), dojo.byId("divLayerContentHolder"));
+    }, 500);
 }
 
-//Function to hide BaseMapWidget onmouseout
-function HideBaseMapWidget() {
-    dijit.byId('btnImgBaseMap').attr("checked", false);
-    var node = dojo.byId('divBaseMapTitleContainer');
-    if (dojo.coords(node).h > 0) {
-        WipeOutControl(node, 500);
-    }
+//Hide base map container
+function HideBaseMapLayerContainer() {
+    dojo.replaceClass("divLayerContainer", "hideContainerHeight", "showContainerHeight");
+    dojo.byId('divLayerContainer').style.height = '0px';
 }
+
+
