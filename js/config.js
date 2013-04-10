@@ -248,8 +248,7 @@ dojo.declare("js.config", null, {
               TinyURLServiceURL: "http://api.bit.ly/v3/shorten?login=esri&apiKey=R_65fd9891cd882e2a96b99d4bda1be00e&uri=${0}&format=json",
               TinyURLResponseAttribute: "data.url",
               FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comment",
-              TwitterShareURL: "http://twitter.com/home/?status=Public%20Comment ${0}",
+              TwitterShareURL: "http://mobile.twitter.com/compose/tweet?status=Public%20Comment ${0}",
               ShareByMailLink: "mailto:%20?subject=See%20this%20Public%20Comment%20map!&body=${0}"
           }
-
 });
