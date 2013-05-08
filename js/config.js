@@ -156,7 +156,7 @@ dojo.declare("js.config", null, {
           ],
 
     // Set display name for attachment
-    AttachmentDisplayName: "Attachment",
+    AttachmentDisplayName: "Related Document",
 
     // Set this to true to show "Comments" tab in the info-Popup
     ShowCommentsTab: true,
