@@ -50,7 +50,7 @@ dojo.declare("js.config", null, {
     ApplicationIcon: "images/logo.png",
 
     // Set splash window content - Message that appears when the application starts
-    SplashScreenMessage: "<b>Land Use Public Comment</b> <br/> <hr/> <br/>The <b>Land Use Public Comment</b> application allows you to comment on proposed land use cases being heard by your Local Government. It provides 24x7 access to your government organization and supplements statutory public notice requirements. <br/> <br/> You can review pending land use cases, submit public comment and finally review comments from other members of the community to see what is being said about land use activities in your community. <br/> <br /> <b>Contact Us By Phone:</b> <br/> <br/> Naperville Planning Department <br/> Phone: (555) 555-1212 <br/> Open: 8:00 am - 4:00 pm<br/><hr/> <br/>",
+    SplashScreenMessage: "<b>Land Use Public Comment</b> <br/> <hr/> <br/>The <b>Land Use Public Comment</b> application allows you to comment on proposed land use cases being heard by your Local Government. It provides 24x7 access to your government organization and supplements statutory public notice requirements. <br/> <br /> <b>Contact Us By Phone:</b> <br/> <br/> Naperville Planning Department <br/> Phone: (555) 555-1212 <br/> Open: 8:00 am - 4:00 pm<br/><hr/> <br/>",
 
     // Set URL of help page/portal
     HelpURL: "help.htm",
@@ -211,7 +211,7 @@ dojo.declare("js.config", null, {
     DefaultCmnt: "No comment available.",
 
     // Set the custom renderer
-    CustomRenderer: true,
+    CustomRenderer: false,
 
     // Set the custom renderer color
     RendererColor: "#1C86EE",
