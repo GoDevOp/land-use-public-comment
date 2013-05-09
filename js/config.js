@@ -188,15 +188,15 @@ dojo.declare("js.config", null, {
         Locators: [
                 {
                     DisplayText: "Address",
-                    DefaultValue: "1848 N Mill St Naperville IL 60563",
+                    DefaultValue: "139 W Porter Ave Naperville IL 60540",
                     LocatorParamaters: ["SingleLine"],
-                    LocatorURL: "http://tasks.arcgisonline.com/ArcGIS/rest/services/Locators/TA_Address_NA_10/GeocodeServer",
+                    LocatorURL: "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
                     CandidateFields: "Loc_name, Score, Match_addr",
                     DisplayField: "${Match_addr}",
                     ZoomLevel: 7,
                     AddressMatchScore: 80,
                     LocatorFieldName: 'Loc_name',
-                    LocatorFieldValues: ["US_Streets", "US_StreetName"]
+                    LocatorFieldValues: ["USA.StreetName" , "USA.PointAddress", "USA.StreetAddress"]
                 },
                 {
                     DisplayText: "Case Name",
