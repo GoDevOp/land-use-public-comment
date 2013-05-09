@@ -86,18 +86,18 @@ dojo.declare("js.config", null, {
     // Configure operational layers:
     DevPlanLayerURL:
           {
-              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/0",
+              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
               PrimaryKeyForCase: "${CASEID}"
           },
     DevPlanMobileLayerURL:
           {
-              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/0",
+              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
               PrimaryKeyForCase: "${CASEID}"
           },
 
     PublicCommentsLayerURL:
           {
-              ServiceURL: "http://arcgis-localgov-61933129.us-west-1.elb.amazonaws.com/arcgis/rest/services/LandUsePublicComment/LandUseCases/FeatureServer/1",
+              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/1",
               PrimaryKeyForComments: "${CASEID}"
           },
 
