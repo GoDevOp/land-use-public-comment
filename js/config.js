@@ -65,13 +65,13 @@ dojo.declare("js.config", null, {
                     {
                         Key: "parcelMap",
                         ThumbnailSource: "images/parcelmap.png",
-                        Name: "Parcel Map",
+                        Name: "Streets",
                         MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ParcelPublicAccess/MapServer"
                     },
                     {
                         Key: "hybridMap",
                         ThumbnailSource: "images/imageryhybrid.png",
-                        Name: "Hybrid Map",
+                        Name: "Imagery",
                         MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ImageryHybrid/MapServer"
                     }
           ],
