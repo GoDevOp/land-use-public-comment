@@ -1,4 +1,5 @@
-﻿/** @license
+﻿/*global dojo */
+/** @license
  | Version 10.2
  | Copyright 2012 Esri
  |
@@ -60,21 +61,17 @@ dojo.declare("js.config", null, {
     // ------------------------------------------------------------------------------------------------------------------------
     // Set baseMap layers
     // Please note: All base maps need to use the same spatial reference. By default, on application start the first basemap will be loaded
-    BaseMapLayers:
-          [
-                    {
-                        Key: "parcelMap",
-                        ThumbnailSource: "images/parcelmap.png",
-                        Name: "Streets",
-                        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ParcelPublicAccess/MapServer"
-                    },
-                    {
-                        Key: "hybridMap",
-                        ThumbnailSource: "images/imageryhybrid.png",
-                        Name: "Imagery",
-                        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ImageryHybrid/MapServer"
-                    }
-          ],
+    BaseMapLayers: [{
+        Key: "parcelMap",
+        ThumbnailSource: "images/parcelmap.png",
+        Name: "Streets",
+        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ParcelPublicAccess/MapServer"
+    }, {
+        Key: "hybridMap",
+        ThumbnailSource: "images/imageryhybrid.png",
+        Name: "Imagery",
+        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ImageryHybrid/MapServer"
+    }],
 
     // Initial map extent. Use comma (,) to separate values and don't delete the last comma
     DefaultExtent: "-9816010,5123000,-9809970,5129500",
@@ -84,22 +81,19 @@ dojo.declare("js.config", null, {
     // ------------------------------------------------------------------------------------------------------------------------
 
     // Configure operational layers:
-    DevPlanLayerURL:
-          {
-              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
-              PrimaryKeyForCase: "${CASEID}"
-          },
-    DevPlanMobileLayerURL:
-          {
-              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
-              PrimaryKeyForCase: "${CASEID}"
-          },
+    DevPlanLayerURL: {
+        ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
+        PrimaryKeyForCase: "${CASEID}"
+    },
+    DevPlanMobileLayerURL: {
+        ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
+        PrimaryKeyForCase: "${CASEID}"
+    },
 
-    PublicCommentsLayerURL:
-          {
-              ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/1",
-              PrimaryKeyForComments: "${CASEID}"
-          },
+    PublicCommentsLayerURL: {
+        ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/1",
+        PrimaryKeyForComments: "${CASEID}"
+    },
 
 
     // ------------------------------------------------------------------------------------------------------------------------
@@ -119,41 +113,31 @@ dojo.declare("js.config", null, {
 
     // Info-popup is a popup dialog that gets displayed on selecting a feature
     // Set the content to be displayed on the info-Popup. Define labels, field values, field types and field formats
-    InfoWindowData:
-          [
-                    {
-                        DisplayText: "Case ID:",
-                        AttributeValue: "${CASEID}"
-                    },
-                    {
-                        DisplayText: "Case Name:",
-                        AttributeValue: "${CASENAME}"
-                    },
-                    {
-                        DisplayText: "Applicant:",
-                        AttributeValue: "${APPLICANT}"
-                    },
-                    {
-                        DisplayText: "Description:",
-                        AttributeValue: "${CASEDESC}"
-                    },
-                    {
-                        DisplayText: "Case Type:",
-                        AttributeValue: "${CASETYPE}"
-                    },
-                    {
-                        DisplayText: "Case Status:",
-                        AttributeValue: "${CASESTATUS}"
-                    },
-                    {
-                        DisplayText: "Hearing Date:",
-                        AttributeValue: "${HEARINGDT}"
-                    },
-                    {
-                        DisplayText: "Hearing Location:",
-                        AttributeValue: "${HEARINGLOC}"
-                    }
-          ],
+    InfoWindowData: [{
+        DisplayText: "Case ID:",
+        AttributeValue: "${CASEID}"
+    }, {
+        DisplayText: "Case Name:",
+        AttributeValue: "${CASENAME}"
+    }, {
+        DisplayText: "Applicant:",
+        AttributeValue: "${APPLICANT}"
+    }, {
+        DisplayText: "Description:",
+        AttributeValue: "${CASEDESC}"
+    }, {
+        DisplayText: "Case Type:",
+        AttributeValue: "${CASETYPE}"
+    }, {
+        DisplayText: "Case Status:",
+        AttributeValue: "${CASESTATUS}"
+    }, {
+        DisplayText: "Hearing Date:",
+        AttributeValue: "${HEARINGDT}"
+    }, {
+        DisplayText: "Hearing Location:",
+        AttributeValue: "${HEARINGLOC}"
+    }],
 
     // Set display name for attachment
     AttachmentDisplayName: "Related Document",
@@ -184,27 +168,27 @@ dojo.declare("js.config", null, {
     // Set locator settings such as locator symbol, size, zoom level, display fields, match score
     LocatorSettings: {
         DefaultLocatorSymbol: "images/RedPushpin.png",
-        MarkupSymbolSize: { width: 35, height: 35 },
-        Locators: [
-                {
-                    DisplayText: "Address",
-                    DefaultValue: "139 W Porter Ave Naperville IL 60540",
-                    LocatorParamaters: ["SingleLine"],
-                    LocatorURL: "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
-                    CandidateFields: "Loc_name, Score, Match_addr",
-                    DisplayField: "${Match_addr}",
-                    ZoomLevel: 7,
-                    AddressMatchScore: 80,
-                    LocatorFieldName: 'Loc_name',
-                    LocatorFieldValues: ["USA.StreetName" , "USA.PointAddress", "USA.StreetAddress"]
-                },
-                {
-                    DisplayText: "Case Name",
-                    DefaultValue: "Naperville",
-                    QueryString: "CASENAME like '%${0}%'",
-                    DisplayField: "${CASENAME}"
-                }
-            ]
+        MarkupSymbolSize: {
+            width: 35,
+            height: 35
+        },
+        Locators: [{
+            DisplayText: "Address",
+            DefaultValue: "139 W Porter Ave Naperville IL 60540",
+            LocatorParamaters: ["SingleLine"],
+            LocatorURL: "http://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer",
+            CandidateFields: "Loc_name, Score, Match_addr",
+            DisplayField: "${Match_addr}",
+            ZoomLevel: 7,
+            AddressMatchScore: 80,
+            LocatorFieldName: 'Loc_name',
+            LocatorFieldValues: ["USA.StreetName", "USA.PointAddress", "USA.StreetAddress"]
+        }, {
+            DisplayText: "Case Name",
+            DefaultValue: "Naperville",
+            QueryString: "CASENAME like '%${0}%'",
+            DisplayField: "${CASENAME}"
+        }]
     },
 
     // Set the default comment to be displayed
@@ -243,12 +227,11 @@ dojo.declare("js.config", null, {
     // ------------------------------------------------------------------------------------------------------------------------
 
     // Set URL for TinyURL service, and URLs for social media
-    MapSharingOptions:
-          {
-              TinyURLServiceURL: "http://api.bit.ly/v3/shorten?login=esri&apiKey=R_65fd9891cd882e2a96b99d4bda1be00e&uri=${0}&format=json",
-              TinyURLResponseAttribute: "data.url",
-              FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comment",
-              TwitterShareURL: "http://mobile.twitter.com/compose/tweet?status=Public%20Comment ${0}",
-              ShareByMailLink: "mailto:%20?subject=See%20this%20Public%20Comment%20map!&body=${0}"
-          }
+    MapSharingOptions: {
+        TinyURLServiceURL: "http://api.bit.ly/v3/shorten?login=esri&apiKey=R_65fd9891cd882e2a96b99d4bda1be00e&uri=${0}&format=json",
+        TinyURLResponseAttribute: "data.url",
+        FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comment",
+        TwitterShareURL: "http://mobile.twitter.com/compose/tweet?status=Public%20Comment ${0}",
+        ShareByMailLink: "mailto:%20?subject=See%20this%20Public%20Comment%20map!&body=${0}"
+    }
 });
