@@ -65,12 +65,12 @@ dojo.declare("js.config", null, {
         Key: "parcelMap",
         ThumbnailSource: "images/parcelmap.png",
         Name: "Streets",
-        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ParcelPublicAccess/MapServer"
+        MapURL: "http://tryitlive.arcgis.com/arcgis/rest/services/GeneralPurpose/MapServer"
     }, {
         Key: "hybridMap",
         ThumbnailSource: "images/imageryhybrid.png",
         Name: "Imagery",
-        MapURL: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/ImageryHybrid/MapServer"
+        MapURL: "http://tryitlive.arcgis.com/arcgis/rest/services/ImageryHybrid/MapServer"
     }],
 
     // Initial map extent. Use comma (,) to separate values and don't delete the last comma
@@ -220,7 +220,7 @@ dojo.declare("js.config", null, {
     // ------------------------------------------------------------------------------------------------------------------------
 
     // Set geometry service URL
-    GeometryService: "http://arcgis-tenone2012-1974758903.us-west-1.elb.amazonaws.com/arcgis/rest/services/Utilities/Geometry/GeometryServer",
+    GeometryService: "http://tasks.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer",
 
     // ------------------------------------------------------------------------------------------------------------------------
     // SETTINGS FOR MAP SHARING
