@@ -33,12 +33,14 @@ function ShowInfoWindowDetails(mapPoint, attributes, share) {
         dojo.byId('divInfoContent').style.height = infoPopupHeight + "px";
     }
     for (var i in attributes) {
-        if (!attributes[i]) {
-            attributes[i] = "";
+        if (attributes.hasOwnProperty(i)) {
+            if (!attributes[i]) {
+                attributes[i] = "";
+            }
         }
     }
     map.getLayer(tempGraphicsLayerId).clear();
-    //Set infowindow size based on devices or desktop browsers
+    //Set info window size based on devices or desktop browsers
     (isMobileDevice) ? map.infoWindow.resize(225, 60) : map.infoWindow.resize(infoPopupWidth, infoPopupHeight);
     if (!share) {
         if (!isMobileDevice) {
@@ -115,25 +117,29 @@ function PopulateInfoDetails(attributes) {
     var date = new js.date();
 
     for (var i in map.getLayer(devPlanLayerId).fields) {
-        if (!attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
-            attributes[map.getLayer(devPlanLayerId).fields[i].name] = "-";
-            continue;
-        }
-        if (map.getLayer(devPlanLayerId).fields[i].type == "esriFieldTypeDate") {
-            if (attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
-                if (Number(attributes[map.getLayer(devPlanLayerId).fields[i].name])) {
-                    var date = new js.date();
-                    var utcMilliseconds = Number(attributes[map.getLayer(devPlanLayerId).fields[i].name]);
-                    attributes[map.getLayer(devPlanLayerId).fields[i].name] = dojo.date.locale.format(date.utcTimestampFromMs(utcMilliseconds), { datePattern: formatDateAs, selector: "date" });
+        if (map.getLayer(devPlanLayerId).fields.hasOwnProperty(i)) {
+            if (!attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
+                attributes[map.getLayer(devPlanLayerId).fields[i].name] = "-";
+                continue;
+            }
+            if (map.getLayer(devPlanLayerId).fields[i].type == "esriFieldTypeDate") {
+                if (attributes[map.getLayer(devPlanLayerId).fields[i].name]) {
+                    if (Number(attributes[map.getLayer(devPlanLayerId).fields[i].name])) {
+                        var date = new js.date();
+                        var utcMilliseconds = Number(attributes[map.getLayer(devPlanLayerId).fields[i].name]);
+                        attributes[map.getLayer(devPlanLayerId).fields[i].name] = dojo.date.locale.format(date.utcTimestampFromMs(utcMilliseconds), { datePattern: formatDateAs, selector: "date" });
+                    }
                 }
             }
         }
     }
 
     for (var index in infoWindowData) {
-        var tr = document.createElement("tr");
-        tbody.appendChild(tr);
-        CreateTableRow(tr, infoWindowData[index].DisplayText, dojo.string.substitute(infoWindowData[index].AttributeValue, attributes));
+        if (infoWindowData.hasOwnProperty(index)) {
+            var tr = document.createElement("tr");
+            tbody.appendChild(tr);
+            CreateTableRow(tr, infoWindowData[index].DisplayText, dojo.string.substitute(infoWindowData[index].AttributeValue, attributes));
+        }
     }
 
     if (showCommentsTab) {
@@ -311,26 +317,122 @@ function ShowCommentsView() {
     SetCommentHeight();
 }
 
+//Validate 10 digit number
+function IsPhoneNumber(value) {
+    var namePattern = /\d{10}/;
+    if (namePattern.test(value)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//Validate name
+function IsName(name) {
+    var namePattern = /^[A-Za-z\.\- ]{1,150}$/;
+    if (namePattern.test(name)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 //Add comment
 function AddPublicComment() {
-    var text = dojo.byId('txtComments').value.trim('');
-    if (text == "") {
-        dojo.byId('txtComments').focus();
+    var commentsValue = dojo.byId('txtComments').value.trim('');
+    if (dojo.byId('txtName').value == "") {
+        ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("nameRequired")[0].childNodes[0].nodeValue);
+        return;
+    }
+    if (dojo.byId('txtName').value.length > 100) {
+        ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("nameLength")[0].childNodes[0].nodeValue);
+        return;
+    }
+
+    if (dojo.byId('txtName').value.length > 0) {
+        if (!IsName(dojo.byId('txtName').value.trim())) {
+            dojo.byId('txtName').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("nameProvisions")[0].childNodes[0].nodeValue);
+            return false;
+        }
+    }
+
+    if ((dojo.byId('txtPhone').value == "") && (dojo.byId('txtMail').value == "")) {
+        ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("mandatoryFields")[0].childNodes[0].nodeValue);
+        return;
+    }
+    if (dojo.byId('txtPhone').value == '') {
+        if (!CheckMailFormat(dojo.byId('txtMail').value)) {
+            dojo.byId('txtMail').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidEmailId")[0].childNodes[0].nodeValue);
+            return false;
+        }
+    } else if (dojo.byId('txtMail').value == '') {
+        if (!IsPhoneNumber(dojo.byId('txtPhone').value.trim())) {
+            dojo.byId('txtPhone').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidPhone")[0].childNodes[0].nodeValue);
+            return false;
+        }
+        if (dojo.byId('txtPhone').value.length < 10 || dojo.byId('txtPhone').value.length > 10) {
+            dojo.byId('txtPhone').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidPhone")[0].childNodes[0].nodeValue);
+            return false;
+        }
+    }
+    if (dojo.byId('txtPhone').value.length > 0) {
+        if (!IsPhoneNumber(dojo.byId('txtPhone').value.trim())) {
+            dojo.byId('txtPhone').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidPhone")[0].childNodes[0].nodeValue);
+            return false;
+        }
+    }
+    if (dojo.byId('txtPhone').value.length > 10) {
+        dojo.byId('txtPhone').focus();
+        ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidPhone")[0].childNodes[0].nodeValue);
+        return false;
+    }
+    if (dojo.byId('txtMail').value.length > 0) {
+        if (!CheckMailFormat(dojo.byId('txtMail').value)) {
+            dojo.byId('txtMail').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidEmailId")[0].childNodes[0].nodeValue);
+            return false;
+        }
+        if (dojo.byId('txtMail').value.length > 50) {
+            dojo.byId('txtMail').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("emailIdLength")[0].childNodes[0].nodeValue);
+            return false;
+        }
+        if (dojo.byId('txtPhone').value.length > 10) {
+            dojo.byId('txtPhone').focus();
+            ShowSpanErrorMessage("spanCommentError", messages.getElementsByTagName("enterValidPhone")[0].childNodes[0].nodeValue);
+            return false;
+        }
+    }
+    if (dojo.byId('txtAdd').value.length > 100) {
+        ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("addressLength")[0].childNodes[0].nodeValue);
+        return;
+    }
+    if (commentsValue == "") {
         ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("enterComment")[0].childNodes[0].nodeValue);
         return;
     }
     if (dojo.byId('txtComments').value.length > 250) {
-        dojo.byId('txtComments').focus();
         ShowSpanErrorMessage('spanCommentError', messages.getElementsByTagName("commentsLength")[0].childNodes[0].nodeValue);
         return;
     }
+
     ShowProgressIndicator();
     var commentGraphic = new esri.Graphic();
     var date = new js.date();
 
     var attr = {};
     attr[databaseFields.CaseIdFieldName] = selectedRequestID;
-    attr[databaseFields.CommentsFieldName] = text;
+    attr[databaseFields.CommentsFieldName] = commentsValue;
+    attr[commentsInfoPopupFieldsCollection.PhoneNumber] = dojo.byId('txtPhone').value.trim('');
+    attr[commentsInfoPopupFieldsCollection.Email] = dojo.byId('txtMail').value.trim('');
+    attr[commentsInfoPopupFieldsCollection.Name] = dojo.byId('txtName').value.trim('');
+    attr[commentsInfoPopupFieldsCollection.FullAddress] = dojo.byId('txtAdd').value.trim('');
+
     attr[databaseFields.DateFieldName] = date.utcMsFromTimestamp(date.localToUtc(date.localTimestampNow()));
     commentGraphic.setAttributes(attr);
 
@@ -440,11 +542,13 @@ function CreateCommentRecord(attributes, i) {
         }
         var x = dojo.string.substitute(commentsInfoPopupFieldsCollection.Comments, attributes).split(" ");
         for (var i in x) {
-            w = x[i].getWidth(15) - 50;
-            var boxWidth = (isMobileDevice) ? (dojo.window.getBox().w - 10) : (infoPopupWidth - 40);
-            if (boxWidth < w) {
-                td2.className = "tdBreakWord";
-                continue;
+            if (x.hasOwnProperty(i)) {
+                w = x[i].getWidth(15) - 50;
+                var boxWidth = (isMobileDevice) ? (dojo.window.getBox().w - 10) : (infoPopupWidth - 40);
+                if (boxWidth < w) {
+                    td2.className = "tdBreakWord";
+                    continue;
+                }
             }
         }
     }
@@ -460,6 +564,10 @@ function CreateCommentRecord(attributes, i) {
 //Reset comments data
 function ResetCommentValues() {
     dojo.byId('txtComments').value = '';
+    dojo.byId('txtName').value = '';
+    dojo.byId('txtMail').value = '';
+    dojo.byId('txtAdd').value = '';
+    dojo.byId('txtPhone').value = '';
     document.getElementById('spanCommentError').innerHTML = "";
     document.getElementById('spanCommentError').style.display = 'none';
     dojo.byId('divAddComment').style.display = "none";
@@ -871,16 +979,13 @@ function ShowAddCommentsView() {
     dojo.byId('divCommentsView').style.display = "none";
     dojo.byId('divCommentsList').style.display = "none";
     SetCmtControlsHeight();
-    setTimeout(function () {
-        dojo.byId('txtComments').focus();
-    }, 50);
 }
 
 //Display comments controls in infowindow and create scrollbar
 function SetCmtControlsHeight() {
     var height = (isMobileDevice) ? (dojo.window.getBox().h - 20) : dojo.coords(dojo.byId('divInfoContent')).h;
-    dojo.byId("divCmtIpContainer").style.height = (height - ((isTablet) ? 100 : 80)) + "px";
-    dojo.byId('divCmtIpContent').style.height = (height - ((isTablet) ? 100 : 80)) + "px";
+    dojo.byId("divCmtIpContainer").style.height = (height - ((isTablet) ? 70 : 50)) + "px";
+    dojo.byId('divCmtIpContent').style.height = (height - ((isTablet) ? 70 : 50)) + "px";
     CreateScrollbar(dojo.byId("divCmtIpContainer"), dojo.byId("divCmtIpContent"));
 }
 

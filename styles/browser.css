@@ -141,7 +141,7 @@ body,html
     -webkit-box-shadow: 0 0 15px #63BA65;
     -moz-box-shadow: 0 0 15px #63BA65;
     box-shadow: 0 0 15px #63BA65;
-    filter: progid:DXImageTransform.Microsoft.Glow(color='#8EAE21', Strength='4');
+    behavior: url("styles/PIE.htc");
 }
 
 /*---------------------------------------------------------------------------------------------------------*/
@@ -181,11 +181,24 @@ body,html
 .txtArea
 {
     font-size:11px !important;
-    width: 295px;
-    height: 120px;
+    width: 234px;
+    height: 60px;
     line-height:22px;
 }
-
+.trRowStyle
+{
+    height: 29px;
+}
+.txtBox
+{
+    height: 25px !important;
+    line-height: 23px !important;
+    font-size: 11px !important;
+}
+.trSpanComment
+{
+    height: 20px;
+}
 /*---------------------------------------------------------------------------------------------------------*/
 /* esri slider style*/
 .esriSimpleSlider

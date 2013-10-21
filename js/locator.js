@@ -130,37 +130,41 @@ function ShowLocatedAddress(candidates) {
             //Filter and display valid address results according to locator settings in configuration file
             var counter = 0;
             for (var i in candidates) {
-                if (candidates[i].score > locatorSettings.Locators[0].AddressMatchScore) {
-                    for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
-                        if (map.getLayer(baseMapLayers[bMap].Key).visible) {
-                            var bmap = baseMapLayers[bMap].Key;
+                if (candidates.hasOwnProperty(i)) {
+                    if (candidates[i].score > locatorSettings.Locators[0].AddressMatchScore) {
+                        for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
+                            if (map.getLayer(baseMapLayers[bMap].Key).visible) {
+                                var bmap = baseMapLayers[bMap].Key;
+                            }
                         }
-                    }
 
-                    if (map.getLayer(bmap).fullExtent.contains(candidates[i].location)) {
-                        for (j in locatorSettings.Locators[0].LocatorFieldValues) {
-                            if (candidates[i].attributes[locatorSettings.Locators[0].LocatorFieldName] == locatorSettings.Locators[0].LocatorFieldValues[j]) {
-                                counter++;
-                                var candidate = candidates[i];
-                                var tr = document.createElement("tr");
-                                tBody.appendChild(tr);
-                                var td1 = document.createElement("td");
-                                td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes);
-                                td1.align = "left";
-                                td1.className = 'bottomborder';
-                                td1.style.cursor = "pointer";
-                                td1.setAttribute("x", candidate.location.x);
-                                td1.setAttribute("y", candidate.location.y);
-                                td1.setAttribute("address", dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes));
-                                td1.onclick = function () {
-                                    dojo.byId("txtAddress").value = this.innerHTML;
-                                    dojo.byId('txtAddress').setAttribute("defaultAddress", this.innerHTML);
-                                    mapPoint = new esri.geometry.Point(Number(this.getAttribute("x")), Number(this.getAttribute("y")), map.spatialReference);
-                                    dojo.byId("txtAddress").setAttribute("defaultAddressTitle", this.innerHTML);
-                                    LocateGraphicOnMap(mapPoint);
-                                    dojo.byId("imgGeolocation").src = "images/gps.png";
+                        if (map.getLayer(bmap).fullExtent.contains(candidates[i].location)) {
+                            for (j in locatorSettings.Locators[0].LocatorFieldValues) {
+                                if (locatorSettings.Locators[0].LocatorFieldValues.hasOwnProperty(j)) {
+                                    if (candidates[i].attributes[locatorSettings.Locators[0].LocatorFieldName] == locatorSettings.Locators[0].LocatorFieldValues[j]) {
+                                        counter++;
+                                        var candidate = candidates[i];
+                                        var tr = document.createElement("tr");
+                                        tBody.appendChild(tr);
+                                        var td1 = document.createElement("td");
+                                        td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes);
+                                        td1.align = "left";
+                                        td1.className = 'bottomborder';
+                                        td1.style.cursor = "pointer";
+                                        td1.setAttribute("x", candidate.location.x);
+                                        td1.setAttribute("y", candidate.location.y);
+                                        td1.setAttribute("address", dojo.string.substitute(locatorSettings.Locators[0].DisplayField, candidate.attributes));
+                                        td1.onclick = function () {
+                                            dojo.byId("txtAddress").value = this.innerHTML;
+                                            dojo.byId('txtAddress').setAttribute("defaultAddress", this.innerHTML);
+                                            mapPoint = new esri.geometry.Point(Number(this.getAttribute("x")), Number(this.getAttribute("y")), map.spatialReference);
+                                            dojo.byId("txtAddress").setAttribute("defaultAddressTitle", this.innerHTML);
+                                            LocateGraphicOnMap(mapPoint);
+                                            dojo.byId("imgGeolocation").src = "images/gps.png";
+                                        }
+                                        tr.appendChild(td1);
+                                    }
                                 }
-                                tr.appendChild(td1);
                             }
                         }
                     }
@@ -256,22 +260,24 @@ function PopulateCaseNames(features) {
                 });
 
                 for (var i in caseFeatures) {
-                    var tr = document.createElement("tr");
-                    tBody.appendChild(tr);
-                    var td1 = document.createElement("td");
-                    td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes);
-                    td1.className = 'bottomborder';
-                    td1.style.cursor = "pointer";
-                    td1.height = 20;
-                    td1.title = 'Click to locate case';
-                    td1.setAttribute("objectId", caseFeatures[i].attributes[map.getLayer(devPlanLayerId).objectIdField]);
-                    td1.setAttribute("caseName", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes));
-                    td1.onclick = function () {
-                        dojo.byId('txtAddress').setAttribute("defaultCase", this.innerHTML);
-                        dojo.byId("txtAddress").setAttribute("defaultCaseTitle", this.innerHTML);
-                        LocateCaseOnMap(this);
+                    if (caseFeatures.hasOwnProperty(i)) {
+                        var tr = document.createElement("tr");
+                        tBody.appendChild(tr);
+                        var td1 = document.createElement("td");
+                        td1.innerHTML = dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes);
+                        td1.className = 'bottomborder';
+                        td1.style.cursor = "pointer";
+                        td1.height = 20;
+                        td1.title = 'Click to locate case';
+                        td1.setAttribute("objectId", caseFeatures[i].attributes[map.getLayer(devPlanLayerId).objectIdField]);
+                        td1.setAttribute("caseName", dojo.string.substitute(locatorSettings.Locators[1].DisplayField, caseFeatures[i].attributes));
+                        td1.onclick = function () {
+                            dojo.byId('txtAddress').setAttribute("defaultCase", this.innerHTML);
+                            dojo.byId("txtAddress").setAttribute("defaultCaseTitle", this.innerHTML);
+                            LocateCaseOnMap(this);
+                        }
+                        tr.appendChild(td1);
                     }
-                    tr.appendChild(td1);
                 }
             }
         }

@@ -83,11 +83,13 @@ dojo.declare("js.config", null, {
     // Configure operational layers:
     DevPlanLayerURL: {
         ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
-        PrimaryKeyForCase: "${CASEID}"
+        PrimaryKeyForCase: "${CASEID}",
+        HearingDate: "hearingdt"
     },
     DevPlanMobileLayerURL: {
         ServiceURL: "http://services.arcgis.com/b6gLrKHqgkQb393u/arcgis/rest/services/LandUseCasesTryItLive/FeatureServer/0",
-        PrimaryKeyForCase: "${CASEID}"
+        PrimaryKeyForCase: "${CASEID}",
+        HearingDate: "hearingdt"
     },
 
     PublicCommentsLayerURL: {
@@ -212,7 +214,11 @@ dojo.declare("js.config", null, {
     // Set info-pop fields for adding and displaying comment
     CommentsInfoPopupFieldsCollection: {
         Submitdate: "${SUBMITDT}",
-        Comments: "${COMMENTS}"
+        Comments: "${COMMENTS}",
+        PhoneNumber: "PHONE",
+        Email: "EMAIL",
+        Name: "NAME",
+        FullAddress: "FULLADDR"
     },
 
     // ------------------------------------------------------------------------------------------------------------------------

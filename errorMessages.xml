@@ -29,4 +29,12 @@
     <caseToLocate>Enter case name to locate.</caseToLocate>
     <noSearchResults>No search results found.</noSearchResults>
     <noMatchingCaseName>No matching case name found.</noMatchingCaseName>
+    <mandatoryFields>Email or Phone number is required.</mandatoryFields>
+    <nameRequired>Please enter name.</nameRequired>
+    <nameProvisions>Name accepts alphabets, space, ".", "-".</nameProvisions>
+    <enterValidPhone>Phone number should be of 10 digits.</enterValidPhone>
+    <emailIdLength>Email ID should not exceed 100 characters.</emailIdLength>
+    <nameLength>Name  should not exceed 100 characters.</nameLength>
+    <addressLength>Address  should not exceed 100 characters.</addressLength>
+    <enterValidEmailId>Please enter valid email ID.</enterValidEmailId>
 </Messages>
