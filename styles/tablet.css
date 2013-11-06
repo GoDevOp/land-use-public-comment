@@ -182,7 +182,7 @@ html, body
 .txtArea
 {
     height:75px !important;
-    width: 286px;
+    width: 90%;
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
     border-radius: 3px;
@@ -213,7 +213,17 @@ html, body
 {
     height: 44px !important;
 }
-
+.txtBox
+{
+    font-size: 15px !important;
+    height: 44px !important;
+    width: 90%;
+    padding: 0px !important;
+}
+.trSpanComment
+{
+    height: 20px;
+}
 .trRowStyle
 {
     height: 50px !important;
@@ -226,3 +236,8 @@ html, body
 
 }
 
+textarea
+{
+    -webkit-user-modify: read-write-plaintext-only;
+    -webkit-tap-highlight-color: rgba(255,0,0,0);
+}

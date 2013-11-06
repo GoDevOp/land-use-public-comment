@@ -28,7 +28,7 @@ dojo.require("esri.layers.FeatureLayer");
 dojo.require("mobile.InfoWindow");
 dojo.require("js.config");
 dojo.require("js.date");
-
+dojo.require("dojox.mobile.View");
 var map; //variable to store map object
 var isiOS = false; //This variable will be set to 'true' if the application is accessed from iPhone or iPad
 var isBrowser = false; //This variable will be set to 'true' when application is accessed from desktop browsers
@@ -220,7 +220,18 @@ function init() {
         slider: true,
         infoWindow: infoWindow
     });
-
+    dojo.connect(map, "onLoad", function () {
+        var zoomExtent;
+        var extent = GetQuerystring('extent');
+        if (extent != "") {
+            zoomExtent = extent.split(',');
+        }
+        else {
+            zoomExtent = responseObject.DefaultExtent.split(",");
+        }
+        var startExtent = new esri.geometry.Extent(parseFloat(zoomExtent[0]), parseFloat(zoomExtent[1]), parseFloat(zoomExtent[2]), parseFloat(zoomExtent[3]), map.spatialReference);
+        map.setExtent(startExtent);
+    });
     ShowProgressIndicator();
     CreateBaseMapComponent();
 
@@ -258,18 +269,7 @@ function init() {
         this.style.color = "#FFF";
     });
     dojo.connect(dojo.byId('txtAddress'), "onblur", ReplaceDefaultText);
-    dojo.connect(map, "onLoad", function () {
-        var zoomExtent;
-        var extent = GetQuerystring('extent');
-        if (extent != "") {
-            zoomExtent = extent.split(',');
-        }
-        else {
-            zoomExtent = responseObject.DefaultExtent.split(",");
-        }
-        var startExtent = new esri.geometry.Extent(parseFloat(zoomExtent[0]), parseFloat(zoomExtent[1]), parseFloat(zoomExtent[2]), parseFloat(zoomExtent[3]), map.spatialReference);
-        map.setExtent(startExtent);
-    });
+
     dojo.connect(dojo.byId('imgHelp'), "onclick", function () {
         window.open(responseObject.HelpURL);
     });
@@ -315,6 +315,12 @@ function MapInitFunction() {
         id: devPlanLayerId,
         displayOnPan: false
     });
+
+    var hearingDt = isBrowser ? devPlanLayerURL.HearingDate : devPlanMobileLayerURL.HearingDate
+    var todayDate = new Date();
+    var dateFrom = todayDate.getFullYear() + '/' + (todayDate.getMonth() + 1) + '/' + todayDate.getDate();
+    devPlanLayer.setDefinitionExpression(hearingDt + " >= '" + dateFrom + "'");
+
     if (customRenderer) {
         var lineColor = new dojo.Color();
         lineColor.setColor(rendererColor);
