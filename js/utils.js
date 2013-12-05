@@ -779,53 +779,53 @@ function ShowMyLocation() {
     HideShareAppContainer();
     HideAddressContainer();
     navigator.geolocation.getCurrentPosition(
-		function (position) {
-		    ShowProgressIndicator();
-		    mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
-		    var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
-		    graphicCollection.addPoint(mapPoint);
-		    geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
-		        for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
-		            if (map.getLayer(baseMapLayers[bMap].Key).visible) {
-		                var bmap = baseMapLayers[bMap].Key;
-		            }
-		        }
-		        if (!map.getLayer(bmap).fullExtent.contains(newPointCollection[0].getPoint(0))) {
-		            mapPoint = null;
-		            selectedMapPoint = null;
-		            featureID = null;
-		            map.getLayer(tempGraphicsLayerId).clear();
-		            map.infoWindow.hide();
-		            HideProgressIndicator();
-		            alert(messages.getElementsByTagName("geoLocation")[0].childNodes[0].nodeValue);
-		            return;
-		        }
-		        mapPoint = newPointCollection[0].getPoint(0);
-		        map.setLevel(locatorSettings.Locators[0].ZoomLevel);
-		        map.centerAt(mapPoint);
-		        var locatorMarkupSymbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
-		        var graphic = new esri.Graphic(mapPoint, locatorMarkupSymbol, { "Locator": true }, null);
-		        map.getLayer(tempGraphicsLayerId).add(graphic);
-		        HideProgressIndicator();
-		    });
-		},
-          	function (error) {
-          	    HideProgressIndicator();
-          	    switch (error.code) {
-          	        case error.TIMEOUT:
-          	            alert(messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.POSITION_UNAVAILABLE:
-          	            alert(messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.PERMISSION_DENIED:
-          	            alert(messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.UNKNOWN_ERROR:
-          	            alert(messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
-          	            break;
-          	    }
-          	}, { timeout: 10000 }
+        function (position) {
+            ShowProgressIndicator();
+            mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
+            var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
+            graphicCollection.addPoint(mapPoint);
+            geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
+                for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
+                    if (map.getLayer(baseMapLayers[bMap].Key).visible) {
+                        var bmap = baseMapLayers[bMap].Key;
+                    }
+                }
+                if (!map.getLayer(bmap).fullExtent.contains(newPointCollection[0].getPoint(0))) {
+                    mapPoint = null;
+                    selectedMapPoint = null;
+                    featureID = null;
+                    map.getLayer(tempGraphicsLayerId).clear();
+                    map.infoWindow.hide();
+                    HideProgressIndicator();
+                    alert(messages.getElementsByTagName("geoLocation")[0].childNodes[0].nodeValue);
+                    return;
+                }
+                mapPoint = newPointCollection[0].getPoint(0);
+                map.setLevel(locatorSettings.Locators[0].ZoomLevel);
+                map.centerAt(mapPoint);
+                var locatorMarkupSymbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
+                var graphic = new esri.Graphic(mapPoint, locatorMarkupSymbol, { "Locator": true }, null);
+                map.getLayer(tempGraphicsLayerId).add(graphic);
+                HideProgressIndicator();
+            });
+        },
+            function (error) {
+                HideProgressIndicator();
+                switch (error.code) {
+                    case error.TIMEOUT:
+                        alert(messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert(messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.PERMISSION_DENIED:
+                        alert(messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        alert(messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
+                        break;
+                }
+            }, { timeout: 10000 }
        );
 }
 
@@ -1016,46 +1016,57 @@ function SortResultFeatures(a, b) {
 
 //Create the tiny url with current extent and selected feature
 function ShareLink(ext) {
+    var timeoutId = null;
+    tinyResponse = null;
     tinyUrl = null;
     mapExtent = GetMapExtent();
+
+    // Encode the URL as a component
     var url = esri.urlToObject(windowURL);
     if (featureID) {
-        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent + "$featureID=" + featureID;
+        var urlStr = url.path + "?extent=" + mapExtent + "$featureID=" + featureID;
     }
     else {
-        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent;
+        var urlStr = url.path + "?extent=" + mapExtent;
     }
+    urlStr = encodeURIComponent(urlStr);
+
+    // Shorten it
     url = dojo.string.substitute(mapSharingOptions.TinyURLServiceURL, [urlStr]);
-
-    dojo.io.script.get({
-        url: url,
-        callbackParamName: "callback",
-        load: function (data) {
-            tinyResponse = data;
-            tinyUrl = data;
-            var attr = mapSharingOptions.TinyURLResponseAttribute.split(".");
-            for (var x = 0; x < attr.length; x++) {
-                tinyUrl = tinyUrl[attr[x]];
+    esri.request({
+        url: url
+    },{
+        useProxy: true
+    }).then(
+        function (response) {
+            if(timeoutId !== null) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
             }
-            if (ext) {
-                HideBaseMapLayerContainer();
-                HideAddressContainer();
-                var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
+            if (response.status_code && response.status_code === 200) {
+                tinyResponse = response.data;
+                tinyUrl = response.data.url;
+                if (ext) {
+                    HideBaseMapLayerContainer();
+                    HideAddressContainer();
+                    var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
 
-                if (dojo.coords("divAppContainer").h > 0) {
-                    HideShareAppContainer();
+                    if (dojo.coords("divAppContainer").h > 0) {
+                        HideShareAppContainer();
+                    }
+                    else {
+                        dojo.byId('divAppContainer').style.height = cellHeight + "px";
+                        dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
+                    }
                 }
-                else {
-                    dojo.byId('divAppContainer').style.height = cellHeight + "px";
-                    dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
-                }
+            } else {
+                alert(messages.getElementsByTagName(
+                    "tinyURLEngine")[0].childNodes[0].nodeValue + ": " + response.status_txt);
             }
-        },
-        error: function (error) {
-            alert(tinyResponse.error);
         }
-    });
-    setTimeout(function () {
+    );
+
+    timeoutId = setTimeout(function () {
         if (!tinyResponse) {
             alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
             return;
