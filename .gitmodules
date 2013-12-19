@@ -1,3 +1,0 @@
-[submodule "resource-proxy"]
-	path = resource-proxy
-	url = git@github.com:Esri/resource-proxy.git
