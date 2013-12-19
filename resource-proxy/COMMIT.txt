@@ -1,0 +1,9 @@
+Copy of repository https://github.com/Esri/resource-proxy
+commit defb391ddce9f7fbd47d01e21da9d930edbf1be6
+Merge: 5735f50 53c28ce
+Author: Kelly Hutchins <khutchins@esri.com>
+Date:   Thu Dec 19 09:09:00 2013 -0800
+
+    Merge pull request #42 from MikeTschudi/master
+
+    Added support for directly supplying an OAuth2 access token
