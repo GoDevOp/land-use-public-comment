@@ -4,7 +4,7 @@ The Land Use Public Comment application is a configuration of ArcGIS Server and 
 
 [Try the Land Use Public Comment application](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
 
-[![Image of Land Use Public Comment application](https://raw.github.com/Esri/land-use-public-comment/master/land-use-public-comment.png "Land Use Public Comment application")](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
+[![Image of Land Use Public Comment application](land-use-public-comment.png "Land Use Public Comment application")](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
 
 ## Features
 
@@ -78,7 +78,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 A copy of the license is available in the repository's
-[LICENSE.txt](https://raw.github.com/Esri/land-use-public-comment/master/LICENSE.txt) file.
+[LICENSE.txt](LICENSE.txt) file.
 
 [](Esri Tags: Local-Government Local Government Land Use Public Comment)
 [](Esri Language: JavaScript)
