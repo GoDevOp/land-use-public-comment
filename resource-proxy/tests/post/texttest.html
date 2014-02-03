@@ -2,10 +2,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>XML</title>
+  <title>Plain Text</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <link rel="stylesheet" href="http://js.arcgis.com/3.7/js/esri/css/esri.css">
 
+  <link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css">
   <style>
     body{
       font-family: "Arial Unicode MS, Arial, sans-serif";
@@ -20,7 +20,7 @@
     #status { font-size: 12px; }
   </style>
 
-  <script src="http://js.arcgis.com/3.7/"></script>
+  <script src="http://js.arcgis.com/3.8/"></script>
 
   <script>
     require([
@@ -28,16 +28,15 @@
       "dojo/on",
       "dojo/dom-class",
       "dojo/_base/json",
-      "dojox/xml/parser",
       "esri/urlUtils",
       "esri/config",
       "esri/request",
       "dojo/domReady!"
-    ], function(dom, on, domClass, dojoJson, xmlParser, urlUtils, esriConfig, esriRequest) {
+    ], function(dom, on, domClass, dojoJson, urlUtils, esriConfig, esriRequest) {
 
         esriConfig.defaults.io.proxyUrl = "/oauthProxy/proxy.jsp";
 
-        dom.byId("url").value = "http://earthquake.usgs.gov/earthquakes/catalogs/7day-M5.xml";
+        dom.byId("url").value = "http://earthquake.usgs.gov/earthquakes/catalogs/eqs1day-M1.txt";
         dom.byId("content").value = "";
 
         //handle the Go button's click event
@@ -61,7 +60,7 @@
           var requestHandle = esriRequest({
             "url": url.path,
             "content": url.query,
-            "handleAs": "xml"
+            "handleAs": "text"
           }, options);
 
           requestHandle.then(requestSucceeded, requestFailed);
@@ -70,7 +69,7 @@
         function requestSucceeded(response, io){
           dom.byId("status").innerHTML = "";
           dojoJson.toJsonIndentStr = "  ";
-          dom.byId("content").value = xmlParser.innerXML(response);
+          dom.byId("content").value = dojoJson.toJson(response, true);
         }
         function requestFailed(error, io){
 
@@ -86,7 +85,7 @@
 
 </head>
 <body>
-  <p>Download <b>XML</b> content using esriRequest. </p>
+  <p>Download <b>Plain Text</b> content using esriRequest. </p>
   <p>
     <input type="text" id="url" size="100"/>
     <input type="checkbox" id="chkUsePost"/><label for="chkUsePost">usePost?</label>

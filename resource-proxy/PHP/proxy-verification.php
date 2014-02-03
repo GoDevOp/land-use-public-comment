@@ -156,19 +156,15 @@ $extensions = get_loaded_extensions();
 $writeable = can_write();
 $openssl = in_array('openssl', $extensions);
 $pdo_sqlite = in_array('pdo_sqlite', $extensions);
-$shmop = in_array('shmop', $extensions);
-$shmop_message = getShmopMessage($shmop);
-$mbstring = in_array('mbstring', $extensions);
-$mbstring_message = getMbstringMessage($mbstring);
-$pear = pear_prerequisutes();
-$request2 = http_requests2_exists();
+$curl = in_array('curl', $extensions);
 
 
 ?>
-<h2>Checks php proxy system requirements</h2>
-<small>* Run test from a directory location that includes the proxy.php file on php server</small>
+<h2>Checks php proxy requirements</h2>
+<small>* Run this page from a web server directory that includes the proxy.php file</small><br/>
+<small>* It's reccomended to remove this file from web server once all below tests pass</small>
 <br/><br/>
-<p>Manually test your server configuration by clicking <a href="proxy.config">here</a>.  If you server configuration file displays, your server is <u>not</u> configured properly to use this PHP proxy (see guide for more details).<br/><br/>
+<p>Manually test the web server's configuration by clicking <a href="proxy.config">here</a>.  If the proxy configuration file (proxy.config) displays or gets downloaded, the server is <u>not</u> configured properly to use this proxy (see guide for more details).<br/><br/>
 
 
 <div class="requirements-div">
@@ -194,31 +190,17 @@ $request2 = http_requests2_exists();
 <td><?php echo '<span class="'. strtolower($bool[$pdo_sqlite]) . '">' . $bool[$pdo_sqlite] . '</span>'; ?></td>
 </tr>
 
-<tr>
-<td><span>Check for shmop extension?</span></td>
-<td><?php echo '<span class="'. strtolower($shmop_message) . '">' . $shmop_message . '</span>'; ?></td>
-</tr>
 
 <tr>
-<td><span>Check for mbstring extension?</span></td>
-<td><?php echo '<span class="'. strtolower($mbstring_message) . '">' . $mbstring_message . '</span>'; ?></td>
+<td><span>Check for Curl?</span></td>
+<td><?php echo '<span class="'. strtolower($bool[$curl]) . '">' . $bool[$curl] . '</span>'; ?></td>
 </tr>
 
-<tr>
-<td><span>Check for PEAR?</span></td>
-<td><?php echo '<span class="'. strtolower($pear['pear']) . '">' . $pear['pear'] . '</span>'; ?></td>
-</tr>
-
-<tr>
-<td><span>Check for HTTP_Request2? (PEAR Package)</span></td>
-<td><?php echo '<span class="'. strtolower($request2['result']) . '">' . $request2['result'] . '</span>'; ?></td>
-</tr>
 
 </table>
 
 <div>
 <p><small><?php $inipath = php_ini_loaded_file(); echo "Loaded php.ini path:  <i>" . $inipath . "</i>"; ?></small></p>
-<p><small><?php $pos = strripos($pear['path'], "/PEAR/Registry.php");  if($pos > 0){ echo "PEAR path: <i>" . substr($pear['path'],0,$pos) . "</i>"; } ?></small></p>
 </div>
 
 </div>

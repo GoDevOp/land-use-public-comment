@@ -7,7 +7,7 @@ These proxy files support:
 * Accessing resources secured with token based authentication.
 * [OAuth 2.0 app logins](https://developers.arcgis.com/en/authentication).
 * Enabling logging
-* Both resource and IP based rate limiting
+* Both resource and referer based rate limiting
 
 ##Instructions
 
@@ -27,7 +27,7 @@ These proxy files support:
 *  PHP: PHP version of the proxy
     * proxy.php
     * proxy.config
-    * readme.md
+    * README.md
 
 ##Requirements
 

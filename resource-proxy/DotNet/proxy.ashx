@@ -76,11 +76,40 @@ public class proxy : IHttpHandler {
         try {
             serverUrl = getConfig().GetConfigServerUrl(uri);
             passThrough = serverUrl == null;
-        } catch (InvalidOperationException) {
-            string errorMsg = " Proxy is being used for an unsupported service (proxy.config has mustMatch=\"true\"): " + uri;
+        } catch (InvalidOperationException ex) {
+            string errorMsg = ex.Message + " " + uri;
             log(TraceLevel.Error, errorMsg);
             sendErrorResponse(context.Response, null, errorMsg, System.Net.HttpStatusCode.Forbidden);
             return;
+        }
+
+        //referer
+        //check against the list of referers if they have been specified in the proxy.config
+        String[] allowedReferersArray = ProxyConfig.GetAllowedReferersArray();
+        if (allowedReferersArray != null && allowedReferersArray.Length > 0)
+        {
+            bool allowed = false;
+            string requestReferer = context.Request.Headers["referer"];
+
+            foreach (var referer in allowedReferersArray)
+            {
+                if ((allowedReferersArray.Length == 1) && referer == String.Empty)
+                    break;
+
+                if (requestReferer != null && requestReferer != String.Empty && (ProxyConfig.isUrlPrefixMatch(referer, requestReferer)) || referer == "*")
+                {
+                    allowed = true;
+                    break;
+                }
+            }
+
+            if (!allowed)
+            {
+                string errorMsg = " Proxy is being used from an unsupported referer: " + context.Request.Headers["referer"];
+                log(TraceLevel.Error, errorMsg);
+                sendErrorResponse(context.Response, null, errorMsg, System.Net.HttpStatusCode.Forbidden);
+                return;
+            }
         }
 
         //Throttling: checking the rate limit coming from particular client IP
@@ -148,8 +177,10 @@ public class proxy : IHttpHandler {
             }
         }
 
-        //name by which token parameter is passed
-        string tokenParamName = serverUrl.TokenParamName;
+        //name by which token parameter is passed (if url actually came from the list)
+        string tokenParamName = serverUrl != null ? serverUrl.TokenParamName : null;
+
+
         if (String.IsNullOrEmpty(tokenParamName))
             tokenParamName = "token";
 
@@ -453,7 +484,12 @@ public class ProxyConfig
             if (System.IO.File.Exists(fileName)) {
                 XmlSerializer reader = new XmlSerializer(typeof(ProxyConfig));
                 using (System.IO.StreamReader file = new System.IO.StreamReader(fileName)) {
-                    config = (ProxyConfig)reader.Deserialize(file);
+                    try {
+                        config = (ProxyConfig)reader.Deserialize(file);
+                    }
+                    catch (Exception ex) {
+                        throw ex;
+                    }
                 }
             }
         }
@@ -473,25 +509,55 @@ public class ProxyConfig
         return config;
     }
 
+    //referer
+    //create an array with valid referers using the allowedReferers String that is defined in the proxy.config
+    public static String[] GetAllowedReferersArray()
+    {
+        if (allowedReferers == null)
+            return null;
+
+        return allowedReferers.Split(',');
+    }
+
+    //referer
+    //check if url starts with prefix...
+    public static bool isUrlPrefixMatch(String prefix, String uri)
+    {
+        return uri.ToLower().StartsWith(prefix.ToLower()) ||
+                    uri.ToLower().Replace("https://", "http://").StartsWith(prefix.ToLower()) ||
+                    uri.ToLower().Substring(uri.IndexOf("//")).StartsWith(prefix.ToLower());
+    }
+
     ServerUrl[] serverUrls;
     bool mustMatch;
-    string logFile;
+    //referer
+    static String allowedReferers;
 
     [XmlArray("serverUrls")]
     [XmlArrayItem("serverUrl")]
     public ServerUrl[] ServerUrls {
         get { return this.serverUrls; }
-        set { this.serverUrls = value; }
+        set
+        {
+            this.serverUrls = value;
+        }
     }
     [XmlAttribute("mustMatch")]
     public bool MustMatch {
         get { return mustMatch; }
-        set { mustMatch = value; }
+        set
+        { mustMatch = value; }
     }
-    [XmlAttribute("logFile")]
-    public string LogFile {
-        get { return logFile; }
-        set { logFile = value; }
+
+    //referer
+    [XmlAttribute("allowedReferers")]
+    public string AllowedReferers
+    {
+        get { return allowedReferers; }
+        set
+        {
+            allowedReferers = value;
+        }
     }
 
     public ServerUrl GetConfigServerUrl(string uri) {
@@ -503,9 +569,11 @@ public class ProxyConfig
                 return su;
 
         if (mustMatch)
-            throw new InvalidOperationException();
+            throw new InvalidOperationException(" Proxy is being used for an unsupported service (proxy.config has mustMatch=\"true\"):");
         return null;
     }
+
+
 }
 
 public class ServerUrl {

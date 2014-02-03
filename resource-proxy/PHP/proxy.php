@@ -6,16 +6,12 @@
 
 error_reporting(0);
 
-session_start();
-
-require_once 'HTTP/Request2.php';
-
 class Proxy {
 
 	/**
 	 * Holds proxy configuration parameters
 	 *
-	 * @var array
+	 * @var ProxyConfig
 	 */
 	public $proxyConfig;
 
@@ -42,6 +38,32 @@ class Proxy {
 	 */
 
 	public $proxyLog;
+
+	/**
+	 * Meter object used for rate metering
+	 *
+	 * @var RateMeter
+	 */
+
+	public $meter;
+
+	/**
+	 * Holds headers returned by the proxied resource
+	 *
+	 * @var array
+	 */
+
+	public $headers;
+
+
+	/**
+	 * cURL resource used to send HTTP requests
+	 *
+	 * @var resource
+	 */
+
+	public $ch;
+
 
 	/**
 	 * Holds the action assocated with the request (post, get)
@@ -100,15 +122,6 @@ class Proxy {
 	public $resourceUrl;
 
 	/**
-	 * Holds the request configuration, see http://pear.php.net/manual/en/package.http.http-request2.config.php
-	 *
-	 * @var array
-	 *
-	 */
-
-	public $requestConfig;
-
-	/**
 	 * Number of allowed attempts to get a new token
 	 *
 	 * @var int
@@ -152,10 +165,19 @@ class Proxy {
 	/**
 	 * Holds the response
 	 *
-	 * @var HTTP_Request2_Response
+	 * @var resource
 	 */
 
 	public $response;
+
+	/**
+	 * Holds the response body following curl request
+	 *
+	 * @var String
+	 */
+
+	public $proxyBody;
+
 
 	/**
 	 * Holds a field to help debug booleans
@@ -165,15 +187,18 @@ class Proxy {
 
 	public $bool = array(true=>"True", false=>"False");
 
+	/**
+	 * Holds staged file path.
+	 *
+	 * @var string
+	 */
+
+	private  $unlinkPath;
 
 
-	public function __construct($configuration, $log, $su) {
 
-		$underMeterCap = null;
+	public function __construct($configuration, $log) {
 
-		$results = null;
-
-		$canRequest = null;
 
 		$this->proxyLog = $log;
 
@@ -181,74 +206,28 @@ class Proxy {
 
 		$this->serverUrls = $configuration->serverUrls;
 
+		$this->setupSession();
+
 		$this->setupClassProperties();
 
 		if ($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == true || $this->proxyConfig['mustmatch'] == "true") {
 
 			if($this->isAllowedApplication() == false){
 
-				header('Status: 200', true, 200);
-
-				header('Content-Type: application/json');
-
-				$exceededError = array(
-						"error" => array("code" => 402,
-						"details" => array("This is a protected resource.  Application access is restricted."),
-						"message" => "Application access is restricted.  Unable to proxy request."
-				));
-
-				echo json_encode($exceededError);
-
-				exit();
+				$this->allowedApplicationError();
 
 			}
 
-			if ($this->canProcessRequest()) {
+			$this->verifyConfiguration();
 
-				$ratemeter = new RateMeter($this->resource['url'], $this->referer, $this->resource['ratelimit'], $this->resource['ratelimitperiod'], $this->proxyLog); //need to pass meter interval and meter cap
-
-				$underMeterCap = $ratemeter->underMeterCap();
-
-			} else {
-
-				$this->proxyLog->log("Proxy could not resolve requested url - " . $this->proxyUrl . ".  Possible solution would be to update 'mustMatch', 'matchAll' or 'url' property in config.");
-
-				header('Status: 200', true, 200);
-
-				header('Content-Type: application/json');
-
-				$configError = array(
-						"error" => array("code" => 412,
-								"details" => array("The proxy tried to resolve a prohibited or malformed 'url'.  The server does not meet one of the preconditions that the requester put on the request."),
-								"message" => "Proxy failed due to configuration error."
-						));
-
-				echo json_encode($configError);
-
-				exit();
-			}
-
-			if ($underMeterCap) {
+			if ($this->meter->underMeterCap()) {
 
 				$this->runProxy();
 
 			} else {
 
-				$this->proxyLog->log("Rate meter exceeded by " . $_SERVER['REMOTE_ADDR']);
+				$this->rateMeterExceededError();
 
-				header('Status: 200', true, 200);
-
-				header('Content-Type: application/json');
-
-				$exceededError = array(
-						"error" => array("code" => 402,
-						"details" => array("This is a metered resource, number of requests have exceeded the rate limit interval."),
-						"message" => "Unable to proxy request for requested resource."
-				));
-
-				echo json_encode($exceededError);
-
-				exit();
 			}
 
 		} else if($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == false) {
@@ -257,58 +236,190 @@ class Proxy {
 
 		}else{
 
-			$this->proxyLog->log("Malformed 'mustMatch' property in config");
+			$this->configurationParameterError();
 
-			header('Status: 200', true, 200);
-
-			header('Content-Type: application/json');
-
-			$configError = array(
-					"error" => array("code" => 412,
-							"details" => array("Detected malformed 'mustMatch' property in configuration. The server does not meet one of the preconditions that the requester put on the request."),
-							"message" => "Proxy failed due to configuration error."
-					));
-
-			echo json_encode($configError);
-
-			exit();
 		}
+
+	}
+
+	public function setupSession()
+	{
+		if (!isset($_SESSION)) {
+
+			session_start();
+
+		}
+
+	}
+
+
+	public function makeDirectory($dir, $mode = 0777) //Not implemented.
+	{
+		if (is_dir($dir) || @mkdir($dir,$mode)) return true;
+
+		if (!$this->makeDirectory(dirname($dir),$mode)) return false;
+
+		return @mkdir($dir,$mode);
+
+	}
+
+
+	public function verifyConfiguration()
+	{
+		if (!isset($this->resource['ratelimit']) || !isset($this->resource['ratelimitperiod'])) {
+
+			$this->resource['ratelimit'] = null;
+
+			$this->resource['ratelimitperiod'] = null;
+		}
+
+		if ($this->canProcessRequest()) {
+
+			$this->meter = new RateMeter($this->resource['url'], $this->resource['ratelimit'], $this->resource['ratelimitperiod'], $this->proxyLog); //need to pass meter interval and meter cap
+
+		} else {
+
+			$this->canProcessRequestError();
+
+		}
+	}
+
+	public function configurationParameterError()
+	{
+
+		$this->proxyLog->log("Malformed 'mustMatch' property in config");
+
+		header('Status: 200', true, 200);
+
+		header('Content-Type: application/json');
+
+		$configError = array(
+				"error" => array("code" => 412,
+						"details" => array("Detected malformed 'mustMatch' property in configuration. The server does not meet one of the preconditions that the requester put on the request."),
+						"message" => "Proxy failed due to configuration error."
+				));
+
+		echo json_encode($configError);
+
+		exit();
+	}
+
+	public function rateMeterExceededError()
+	{
+
+		$this->proxyLog->log("Rate meter exceeded by " . $_SERVER['REMOTE_ADDR']);
+
+		header('Status: 200', true, 200);
+
+		header('Content-Type: application/json');
+
+		$exceededError = array(
+				"error" => array("code" => 402,
+				"details" => array("This is a metered resource, number of requests have exceeded the rate limit interval."),
+				"message" => "Unable to proxy request for requested resource."
+		));
+
+		echo json_encode($exceededError);
+
+		exit();
+	}
+
+	public function canProcessRequestError()
+	{
+
+		$this->proxyLog->log("Proxy could not resolve requested url - " . $this->proxyUrl . ".  Possible solution would be to update 'mustMatch', 'matchAll' or 'url' property in config.");
+
+		header('Status: 200', true, 200);
+
+		header('Content-Type: application/json');
+
+		$configError = array(
+				"error" => array("code" => 412,
+						"details" => array("The proxy tried to resolve a prohibited or malformed 'url'.  The server does not meet one of the preconditions that the requester put on the request."),
+						"message" => "Proxy failed due to configuration error."
+				));
+
+		echo json_encode($configError);
+
+		exit();
+	}
+
+	public function allowedApplicationError()
+	{
+
+		header('Status: 200', true, 200);
+
+		header('Content-Type: application/json');
+
+		$allowedApplicationError = array(
+				"error" => array("code" => 402,
+				"details" => array("This is a protected resource.  Application access is restricted."),
+				"message" => "Application access is restricted.  Unable to proxy request."
+		));
+
+		echo json_encode($allowedApplicationError);
+
+		exit();
+	}
+
+	public function setProxyHeaders()
+	{
+		$header_size = curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
+
+		$header_content = trim(substr($this->response,0, $header_size));
+
+		$headers = preg_split( '/\r\n|\r|\n/', $header_content);
+
+		$this->headers = $headers;
+
+		$hasHeaders = (boolean)$headers;
+
+		if($hasHeaders){
+
+			foreach($this->headers as $key => $value) {
+
+				if (stripos($value,'ETag:') !== false || stripos($value,'Content-Type:') !== false
+				|| stripos($value,'Connection:') !== false || stripos($value,'Pragma:') !== false
+				|| stripos($value,'Expires:') !== false) {
+
+					header($value); //Sets the header
+				}
+			}
+
+		}else{
+
+			header("Content-Type: text/plain;charset=utf-8"); //If preg_split does not evaulate use text/plain
+		}
+	}
+
+	public function setResponseBody()
+	{
+
+		$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
+
+		$this->proxyBody = substr($this->response, $header_size);
 
 	}
 
 	public function getResponse()
 	{
 
-		if(headers_sent()){
-
-			foreach(headers_list() as $header){
-
-				header_remove($header);
-			}
-		}
-
-		foreach ($this->response->getHeader() as $headerName => $headerValue) {
-
-			if($headerName == "content-type") {
-
-				header($headerName .': '. $headerValue, true);
-			}
-			if($headerName == "e-tag") {
-
-				header($headerName .': '. $headerValue, true);
-			}
-		}
-
-		echo $this->response->getBody(); //Send the response back to the client.
+		echo $this->proxyBody;
 
 		$this->proxyLog->log("Proxy complete");
 
-		exit(0);
+		$this->proxyConfig = null;
+
+		$this->meter = null;
+
+		$this->proxyLog = null;
+
+		exit();
 	}
+
 
 	public function setupClassProperties()
 	{
-		$this->proxyLog->createBreak();
 
 		try {
 
@@ -371,6 +482,17 @@ class Proxy {
 		return $url;
 	}
 
+	public function resolveDoubleSlashCondition($url)
+	{
+		if (substr($url, 0, strlen("//")) == "//") {
+
+			$url = substr($url, strlen("//"));
+		}
+
+		return $url;
+
+	}
+
 	public function canProcessRequest()
 	{
 		$canProcess = false;
@@ -384,6 +506,8 @@ class Proxy {
 			foreach ($this->serverUrls as $key => $value) {
 
 				$s = $value['serverurl'][0];
+
+				$s['url'] = $this->resolveDoubleSlashCondition($s['url']);
 
 				$s['url'] = $this->formatWithPrefix($s['url']);
 
@@ -403,15 +527,12 @@ class Proxy {
 
 						$this->resource = $s;
 
-						$this->sessionUrl = $this->resource['url'];
+						$this->sessionUrl = $s['url'];
 
 						$canProcess = true;
 
 						return $canProcess;
 
-					}else{
-
-						//Goes here if startsWith is false
 					}
 
 				} else if ($s['matchAll'] == false || $s['matchall'] === "false"){
@@ -422,9 +543,11 @@ class Proxy {
 
 						$this->resource = $s;
 
-						$this->sessionUrl = $this->resource['url'];
+						$this->sessionUrl = $s['url'];
 
 						$canProcess = true;
+
+						return $canProcess;
 					}
 
 				}
@@ -448,38 +571,38 @@ class Proxy {
 
 	}
 
-	public function setRequestConfig($item)
+	public function useSessionToken()
 	{
-		/** Documentation: http://pear.php.net/manual/en/package.http.http-request2.config.php **/
 
-		if(!isset($item))
+		$sessonKey = 'token_for_' . $this->sessionUrl;
+
+		$sessonKey = sprintf("'%s'", $sessonKey);
+
+		if(isset($_SESSION[$sessonKey])) //Try to get token from session
 		{
 
-			$this->requestConfig = array(
-				//'proxy_host'        => 'proxy.example.com',
-				//'proxy_port'        => 3128,
-				//'proxy_user'        => 'myuser',
-				//'proxy_password'    => 'mypass',
-				//'proxy_auth_scheme' => HTTP_Request2::AUTH_DIGEST,
-				'ssl_verify_peer' => false,
-				'ssl_verify_host' => false
-				);
+			$token = $_SESSION[$sessonKey];
 
-		} else {
+			$this->appendToken($token);
 
-			$this->requestConfig = $item;
+			$this->sessionAttempt = true;
+
+			$this->proxyLog->log("Using session token!");
+
 		}
+
+
 	}
 
 	public function runProxy()
 	{
 
-
-		$this->setRequestConfig();
+		$this->useSessionToken();
 
 		if($this->proxyMethod == "FILES"){
 
 			$this->proxyFiles();
+
 
 		}else if($this->proxyMethod == "POST"){
 
@@ -495,66 +618,38 @@ class Proxy {
 
 		if($isUnauthorized === true) {
 
-			//Let's try to get a new token since authorization failed
+			if($this->attemptsCount < $this->allowedAttempts) {
 
-			if(isset($this->sessionAttempt) && $this->sessionAttempt === false){
+				$this->attemptsCount++;
 
-				if(isset($_SESSION['token_for_' . $this->sessionUrl])) //Try to get token from session
-				{
+				$this->proxyLog->log("Retry attempt " . $this->attemptsCount . " of " . $this->allowedAttempts);
 
-					$this->sessionAttempt = true;
+				$token = $this->getNewTokenIfCredentialsAreSpecified();
 
-					$token = $_SESSION['token_for_' . $this->resource['url']];
+				if(!empty($token) || $token != null) {
 
-					$this->proxyLog->log("Atempt to use session token");
-
-					$this->appendToken($token);
-
-					$this->runProxy();
-
-				}else{
-
-					$this->sessionAttempt = true;
-
-					$this->proxyLog->log("Token not in session");
-
-					$this->runProxy();
-				}
-
-			}else{
-
-				if($this->attemptsCount < $this->allowedAttempts)
-				{
-					$this->attemptsCount++;
-
-					$this->proxyLog->log("Retry attempt " . $this->attemptsCount . " of " . $this->allowedAttempts);
-
-					$token = $this->getNewTokenIfCredentialsAreSpecified();
+					$this->addTokenToSession($token);
 
 					$this->appendToken($token);
-
-					if($this->attemptsCount == $this->allowedAttempts) //Let's give up and take steps to remove anything that may have been put into the session
-					{
-
-						$this->proxyLog->log("Removing session value");
-
-						unset($_SESSION['token_for_' . $this->sessionUrl]);
-					}
-
-					$this->runProxy();
-
 				}
 
+				if($this->attemptsCount == $this->allowedAttempts) {
+
+					$this->proxyLog->log("Removing session value");
+
+					$sessonKey = 'token_for_' . $this->sessionUrl;
+
+					$sessonKey = sprintf("'%s'", $sessonKey);
+
+					unset($_SESSION[$sessonKey]);  //Remove token from session
+				}
+
+				$this->runProxy();
 			}
-		}else{
 
-			if($this->response->getStatus() === 200) {
+		} else {
 
-				$this->getResponse();
-
-			}
-
-			$this->getResponse();
+			$this->proxyLog->log("Ok to proxy");
 		}
 
 		return true;
@@ -563,9 +658,26 @@ class Proxy {
 	public function isUnauthorized()
 	{
 
+
 		$isUnauthorized = false;
 
-		$jsonData = json_decode($this->response->getBody());
+		$jsonData = json_decode($this->proxyBody);
+
+		if (strpos($this->proxyBody,'"code":499') !== false) {
+
+			$isUnauthorized = true;
+
+			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
+
+		}
+
+		if (strpos($this->proxyBody,'"code":498') !== false) {
+
+			$isUnauthorized = true;
+
+			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
+
+		}
 
 		$errorCode = $jsonData->{'error'}->{'code'};
 
@@ -573,20 +685,12 @@ class Proxy {
 		{
 			$isUnauthorized = true;
 
-			$this->proxyLog->log("Authorization failed : " . $this->response->getBody());
-
-		}else{
-
-			$isUnauthorized = false;
-
-			$this->proxyLog->log("Ok to proxy");
+			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
 
 		}
 
 		return $isUnauthorized;
 	}
-
-
 
 	private function appendToken($token)
 	{
@@ -599,7 +703,9 @@ class Proxy {
 
 			}else{
 
-				array_merge($this->proxyData, array("token" => $token));
+				$appendedToken = array_merge($this->proxyData, array("token" => $token));
+
+				$this->proxyData = $appendedToken;
 
 			}
 
@@ -621,74 +727,209 @@ class Proxy {
 		}
 	}
 
+	public function initCurl()
+	{
+		$headers = array('Expect:', 'Referer: ' . $this->referer);
+
+		$this->ch = curl_init();
+
+		curl_setopt($this->ch, CURLOPT_HTTPHEADER, $headers);
+
+		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER , false);
+
+		curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST , false);
+
+		curl_setopt($this->ch, CURLOPT_HEADER, true);
+
+	}
+
 
 
 	public function proxyGet() {
 
+		$this->response = null;
+
 		try {
 
-			$request = new HTTP_Request2($this->proxyUrlWithData, HTTP_Request2::METHOD_GET, $this->getRequestConfig());
+			$this->initCurl();
 
-			$request->setHeader(array('Referer' => $this->referer));
+			curl_setopt($this->ch, CURLOPT_HTTPGET, true);
 
-			$this->response = $request->send();
+			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
-			return;
+			curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrlWithData);
+
+			$this->response = curl_exec($this->ch);
+
+			if(curl_errno($this->ch) > 0 || empty($this->response))
+			{
+				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+
+			}else{
+
+				$this->setProxyHeaders();
+
+				$this->setResponseBody();
+
+			}
+
+			curl_close($this->ch);
+
+			$this->ch = null;
+
 
 		} catch (Exception $e) {
 
 			$this->proxyLog->log($e->getMessage());
 		}
+
+		return;
 	}
 
-	public function proxyPost() {
+	public function proxyPost($url, $params)
+	{
+		$this->response = null;
+
+		$this->headers = null;
+
+		$this->proxyBody = null;
+
+		if(empty($url) || $url == null || empty($params) || $url == $params){ //If no $url or $params passed, defaut to class property values
+
+			$url = $this->proxyUrl;
+
+			$params = $this->proxyData;
+
+		}
+
+		if(is_array($params)){ //If $params is array, convert it to a curl query string like 'image=png&f=json'
+
+			$params = $this->build_http_query($params);
+		}
 
 		try {
 
-			$request = new HTTP_Request2($this->proxyUrl, HTTP_Request2::METHOD_POST, $this->getRequestConfig());
+			$this->initCurl();
 
-			$request->addPostParameter($this->proxyData);
+			curl_setopt($this->ch, CURLOPT_URL, $url);
 
-			$request->setHeader(array('Referer' => $this->referer));
+			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
-			$this->response = $request->send();
+			curl_setopt($this->ch, CURLOPT_POST, true);
 
-			return;
+			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $params);
+
+			$this->response = curl_exec($this->ch);
 
 		} catch (Exception $e) {
 
 			$this->proxyLog->log($e->getMessage());
 		}
+
+		if(curl_errno($this->ch) > 0 || empty($this->response))
+		{
+			$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+
+		}else{
+
+			$this->setProxyHeaders();
+
+			$this->setResponseBody();
+		}
+
+		curl_close($this->ch);
+
+		$this->ch = null;
+
+		return;
 	}
 
-	public function proxyFiles() {
+	public function proxyFiles()
+	{
+		try {
 
-		$request = new HTTP_Request2($this->proxyUrl, HTTP_Request2::METHOD_POST, $this->getRequestConfig());
+			if (count($this->proxyData))
+			{
+				$query_array = array();
 
-		$request->addPostParameter($this->proxyData);
+				foreach ($this->proxyData as $pkey => $pvalue)
+				{
+					$query_array[$pkey] = $pvalue;
 
-		$request->setHeader(array('Referer' => $this->referer));
+					foreach ($_FILES as $key => $file)
+					{
+						$parts = pathinfo($file["tmp_name"]);
 
-		foreach ($_FILES as $key => $value) {
+						$this->unlinkPath = $parts["dirname"] . DIRECTORY_SEPARATOR . $file["name"];
 
-			try {
+						rename($file["tmp_name"], $this->unlinkPath);
 
-				if ($value["error"] == UPLOAD_ERR_OK) {
+						$this->proxyData[$key] = "@" . $this->unlinkPath;
 
-					$handle = fopen($value['tmp_name'], "r");
+						$query_array[$key] = "@" . $this->unlinkPath;
 
-					$request->addUpload($value["name"], $handle, $value["name"], 'application/octet-stream');
+					}
 
-					$this->response = $request->send();
-
-					return;
 				}
 
-			} catch (Exception $e) {
-
-				$this->proxyLog->log($e->getMessage());
 			}
+
+			$this->initCurl();
+
+			curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrl);
+
+			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+
+			curl_setopt($this->ch, CURLOPT_POST, true);
+
+			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $query_array);
+
+			$this->response = curl_exec($this->ch);
+
+			if(curl_errno($this->ch) > 0 || empty($this->response))
+			{
+				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+			}else{
+
+				$this->setProxyHeaders();
+
+				$this->setResponseBody();
+
+				if($this->isUnauthorized() == true) {
+
+					$this->proxyLog->log("Unlinking: " . $this->unlinkPath);
+
+					unlink($this->unlinkPath);
+
+				}
+
+			}
+
+			curl_close($this->ch);
+
+			$this->ch = null;
+
+			return;
+
+		} catch (Exception $e) {
+
+			$this->proxyLog->log($e->getMessage());
 		}
+
+	}
+
+	public function build_http_query($query)
+	{
+		$query_array = array();
+
+	    foreach($query as $key => $value ){
+
+	        $query_array[] = $key . '=' . $value;
+
+	    }
+
+    	return implode( '&', $query_array);
+
 	}
 
 	function startsWith($requested, $needed)
@@ -713,7 +954,8 @@ class Proxy {
 	}
 
 
-	public function isUserLogin() {
+	public function isUserLogin()
+	{
 
 		if (isset($this->resource['username']) && isset($this->resource['password'])) {
 
@@ -723,7 +965,8 @@ class Proxy {
 		return false;
 	}
 
-	public function isAppLogin() {
+	public function isAppLogin()
+	{
 
 		if (isset ( $this->resource['clientid']) && isset ($this->resource['clientsecret'])) {
 
@@ -740,13 +983,13 @@ class Proxy {
 
 		$exchangeUri = substr($this->resource['oauth2endpoint'],0,$pos) . "/generateToken";
 
-		$tokenResponse = $this->getToken($exchangeUri, array(
+		$this->proxyPost($exchangeUri, array(
 				'token' => $portalToken,
 				'serverURL' => $this->proxyUrl,
 				'f' => 'json'
 		));
 
-		$tokenResponse = json_decode($tokenResponse, true);
+		$tokenResponse = json_decode($this->proxyBody, true);
 
 		$token = $tokenResponse['token'];
 
@@ -771,7 +1014,6 @@ class Proxy {
 
 				$token = $this->doAppLogin();
 
-
 			} else if($isUserLogin) {
 
 				$token = $this->doUserPasswordLogin();
@@ -784,40 +1026,49 @@ class Proxy {
 			$this->proxyLog->log("Failed getting new token");
 		}
 
-		try
-		{
+		return $token;
+	}
+
+
+	 public function addTokenToSession($token) {
+
+	 	$sessonKey = 'token_for_' . $this->sessionUrl;
+
+	 	$sessonKey = sprintf("'%s'", $sessonKey);
+
+	 	try {
 
 			$this->proxyLog->log('Adding token to session');
 
-			$_SESSION['token_for_' . $this->sessionUrl] = $token; //Use PHP sessions, to make less token requests
+			$_SESSION[$sessonKey] = $token;
 
 		}catch(Exception $e){
 
 			$this->proxyLog->log("Error setting session: " . $e);
 		}
 
-		return $token;
-	}
+	 }
+
 
 	public function doUserPasswordLogin() {
 
-		$this->proxyLog->log("Resource secured via ArcGIS Server security");
+		$this->proxyLog->log("Resource using ArcGIS Server security");
 
 		$infoUrl = $this->formatResourceUrl();
 
-		if (isset($infoUrl)) {
+		if (!empty($infoUrl)) {
 
-			$infoResponse = $this->getToken($infoUrl,array('f' => 'json'));
+			$this->proxyPost($infoUrl,array('f' => 'json'));
 
-			$infoResponse = json_decode($infoResponse, true);
+			$infoResponse = json_decode($this->proxyBody, true);
 
 			$tokenServiceUri = $infoResponse['authInfo']['tokenServicesUrl'];
 
 			$this->proxyLog->log("Got token enpoint");
 
-			if (isset($tokenServiceUri)) {
+			if (!empty($tokenServiceUri)) {
 
-				$tokenResponse = $this->getToken($tokenServiceUri, array (
+				$this->proxyPost($tokenServiceUri, array (
 						'request' => 'getToken',
 						'f' => 'json',
 						'referer' => $this->referer,
@@ -826,14 +1077,18 @@ class Proxy {
 						'password' => $this->resource['password']
 				));
 
-				$tokenResponse = json_decode($tokenResponse, true);
+				$tokenResponse = json_decode($this->proxyBody, true);
 
 				$token = $tokenResponse['token'];
 
 			}else {
 
-				$this->proxyLog->log("Token endpoint from " . $infoUrl . "failed.");
+				$this->proxyLog->log("Unable to determine token endpoint from " . $infoUrl);
 			}
+		} else {
+
+			$this->proxyLog->log("Unable to determine /rest/info endpoint.");
+
 		}
 		return $token;
 	}
@@ -876,16 +1131,16 @@ class Proxy {
 			$this->resource['oauth2endpoint'] = $this->resource['oauth2endpoint'] . "/";
 		}
 
-		$this->proxyLog->log("Resource secured via OAuth");
+		$this->proxyLog->log("Resource using OAuth");
 
-		$tokenResponse = $this->getToken('https://arcgis.com/sharing/oauth2/token?', array(
+		$this->proxyPost($this->resource['oauth2endpoint'] . "token", array(
 				'client_id' => $this->resource['clientid'],
 				'client_secret' => $this->resource['clientsecret'],
 				'grant_type' => 'client_credentials',
 				'f' => 'json'
 		));
 
-		$tokenResponse = json_decode($tokenResponse, true);
+		$tokenResponse = json_decode($this->proxyBody, true);
 
 		$token = $tokenResponse['access_token'];
 
@@ -897,36 +1152,52 @@ class Proxy {
 		return $token;
 	}
 
+	public function getToken($url, $params)
+	{
+		$this->response = null;
 
-	public function getToken($url = '', $params = array()) {
-
-
-		$request = new HTTP_Request2($url, HTTP_Request2::METHOD_POST, $this->getRequestConfig()); //Using POST now
-
-		$request->addPostParameter($params);
-
-		$request->setHeader(array('Referer' => $this->referer));
+		$query = $this->build_http_query($params);
 
 		try {
 
-			$response = $request->send();
+			$this->initCurl();
 
-			if ($response->getStatus() != 200) {
+			curl_setopt($this->ch, CURLOPT_URL, $url);
 
-				$this->proxyLog->log('Unexpected status getting token : ' . $response->getStatus() . ' ' . $response->getReasonPhrase());
+			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+
+			curl_setopt($this->ch, CURLOPT_POST, true);
+
+			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $query);
+
+			$this->response = curl_exec($this->ch);
+
+			if(curl_errno($this->ch) > 0 || empty($this->response))
+			{
+				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
 
 			}else{
 
-				$this->proxyLog->log('Token obtained');
+				//$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
 
+				//$this->proxyBody = substr($this->response, $header_size);
+
+
+				$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
+
+				$token = substr($this->response, $header_size);
+
+				$this->proxyLog->log("TOKEN IS:  " . $token);
 			}
 
-			return $response->getBody();
-
-		} catch (HTTP_Request2_Exception $e) {
+		} catch (Exception $e) {
 
 			$this->proxyLog->log($e->getMessage());
 		}
+
+		curl_close($this->ch);
+
+		return $token;
 
 	}
 
@@ -997,6 +1268,11 @@ class ProxyLog {
 
 			$this->addLogLevel();
 
+			if($this->proxyConfig['loglevel'] != 3){
+
+				$this->attemptWriteToLog();
+			}
+
 		}else{
 
 			throw new Exception ('Problem creating log.');
@@ -1004,26 +1280,21 @@ class ProxyLog {
 
 	}
 
-	 private function addLogLevel() {
+	 private function addLogLevel()
+	 {
 
-		if(!array_key_exists($this->proxyConfig['loglevel'])) { //Is there a logLevel in the proxyConfig properties (probably not)?
+	 	if(empty($this->proxyConfig['logfile'])) {
 
-			if(!isset($this->proxyConfig['logfile']))
-			{
-				$this->proxyConfig = array_merge(array('loglevel' => 0), $this->proxyConfig);
+	 		$this->proxyConfig['logfile'] = null;
 
-			}else{
-				$this->proxyConfig = array_merge(array('loglevel' => 0), $this->proxyConfig);
-			}
+	 		$this->proxyConfig['loglevel'] = 3; //Turns off logging
+	 	}
 
-		}else if(!isset($this->proxyConfig['loglevel'])) {
+	 	if(!empty($this->proxyConfig['logfile']) && empty($this->proxyConfig['loglevel'])) {
 
-			if($this->proxyConfig['logfile'] == null) //Is there a logLevel property in the proxyConfig without a value? If so we set it to 0 when logPath is null.
-			{
-				$this->proxyConfig['loglevel'] = 0;
+	 		$this->proxyConfig['loglevel'] = 0; //Turns on logging
 
-			}
-		}
+	 	}
 
 	 }
 
@@ -1097,7 +1368,7 @@ class ProxyLog {
 		}
 	}
 
-	public function createBreak()
+	public function attemptWriteToLog()
 	{
 
 		if ($this->proxyConfig['loglevel'] == 0 || $this->proxyConfig['loglevel'] == 2) {
@@ -1215,6 +1486,15 @@ class ProxyLog {
 class RateMeter
 {
 	/**
+	 * Holds cleanup threshold value
+	 *
+	 * @var string
+	 * @access public
+	 */
+
+	const CLEAN_RATEMAP_AFTER = 10000;
+
+	/**
 	 * Holds proxy log
 	 *
 	 * @var string
@@ -1257,23 +1537,6 @@ class RateMeter
 	public $microtime;
 
 	/**
-	 * Referer
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $referer;
-
-
-	/**
-	 * Directory property
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $directory;
-
-	/**
 	 * Sqlite database name property
 	 *
 	 * @var string
@@ -1284,13 +1547,13 @@ class RateMeter
 	/**
 	 * Sqlite connection property
 	 *
-	 * @var string
+	 * @var PDO
 	 * @access public
 	 */
 	public $con;
 
 	/**
-	 * Exceeds meter property
+	 * Under meter cap property
 	 *
 	 * @var bool
 	 * @access public
@@ -1305,59 +1568,52 @@ class RateMeter
 	 * @access public
 	 */
 
-	public $cap;
+	public $countCap;
 
 	/**
-	 * Meter interval property
+	 * Meter rate property
 	 *
 	 * @var int
 	 * @access public
 	 */
-	public $interval;
+	public $rate;
 
 	/**
-	 * Holds the rate value
+	 * Holds the rate meter count value
 	 *
 	 * @var int
 	 * @access public
 	 */
-	public $allowedClickRate;
+	public $count = 0;
 
 	/**
-	 * Holds the count value
+	 * Holds rate meter period found in config
 	 *
 	 * @var int
 	 * @access public
 	 */
-	public $clickRate;
 
-
-	/**
-	 * Set RateMeter::properties
-	 *
-	 * @var string
-	 * @param url
-	 */
+	public $ratelimitperiod;
 
 
 
-	public function __construct ($url, $trackback, $limit, $period, $log) {
+	public function __construct ($url, $ratelimit, $ratelimitperiod, $log) {
 
 		$this->proxyLog = $log;
 
 		$this->resourceUrl = $url;
 
-		$this->referer = $trackback;
+		$this->ratelimitperiod = $ratelimitperiod;
 
-		$this->cap = $limit;
+		$this->countCap = $ratelimit;
 
-		$this->interval = $period;  //Interval should always be one second, but is configurable
+		$this->rate = $ratelimit / $ratelimitperiod / 60;  //ratelimitperiod is designed to be in seconds
 
 		$this->ip = $_SERVER['REMOTE_ADDR'];
 
-		$this->dbname = 'proxy_app.sqlite'; // This string may need to come config
+		$this->dbname = 'proxy.sqlite'; // This string may need to come config
 
-		$this->con = $this->getRateMeterDatabase();
+		$this->getRateMeterDatabase();
 
 	}
 
@@ -1395,7 +1651,11 @@ class RateMeter
 			{
 				$db = new PDO("sqlite:" . $this->dbname);
 
-				return $db;
+				$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+				$this->con = $db;
+
+				return;
 			}
 
 		}
@@ -1410,16 +1670,29 @@ class RateMeter
 
 			$db = new PDO("sqlite:" . $this->dbname);
 
+			$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
 			chmod($this->dbname,0777);
 
 			if($db != null)
 			{
+				$db->beginTransaction();
 
 				$this->createResourceIpTable($db);
 
+				$this->createClicksTable($db);
+
+				$this->proxyLog->log("ABOUT TO INSERT CLICK");
+
+				$this->insertClickRecord($db);
+
+				$db->commit();
+
+				$this->con = $db;
+
 			}
 
-			return $db;
+			return;
 
 		}
 		catch(PDOException $e)
@@ -1430,19 +1703,40 @@ class RateMeter
 		}
 	}
 
-	public function createResourceIpTable($db)
+	public function insertClickRecord($db)
+	{
+
+		try {
+			$this->proxyLog->log("INSERTING CLICK");
+
+			$sql = "INSERT INTO clicks (id, total) VALUES (:id,:total)";
+
+			$q = $db->prepare($sql);
+
+			$q->bindValue(':id', null);
+
+			$q->bindValue(':total', 1);
+
+			$q->execute() or die($this->getDatabaseErrorMessage());
+
+		}
+		catch(PDOException $e)
+		{
+
+			$this->proxyLog->log($e->getMessage());
+		}
+
+	}
+
+	public function createClicksTable($db)
 	{
 		try {
 
-			$db->beginTransaction();
+			$db->exec("CREATE TABLE IF NOT EXISTS clicks (
+					id INTEGER PRIMARY KEY,
+                    total INTEGER)");
 
-			$db->exec("CREATE TABLE IF NOT EXISTS ips (
-                    id INTEGER PRIMARY KEY,
-                    url VARCHAR(255),
-                    ip VARCHAR(50),
-                    time INTEGER)");
-
-			$db->commit();
+			$this->proxyLog->log("clicks table created!");
 		}
 		catch(PDOException $e)
 		{
@@ -1451,19 +1745,7 @@ class RateMeter
 
 		try {
 
-			$db->beginTransaction();
-
-			$db->exec('CREATE INDEX id ON ips (id)');
-
-			$db->exec('CREATE INDEX url ON ips (url)');
-
-			$db->exec('CREATE INDEX ip ON ips (ip)');
-
-			$db->exec('CREATE INDEX time ON ips (time)');
-
-			$db->commit();
-
-			$this->proxyLog->log("Index created");
+			$db->exec('CREATE INDEX total ON clicks (total)');
 
 		}
 		catch(PDOException $e)
@@ -1473,7 +1755,181 @@ class RateMeter
 
 	}
 
-	public function selectLastRequestTime() {
+	public function createResourceIpTable($db)
+	{
+		try {
+
+			$db->exec("CREATE TABLE IF NOT EXISTS ips (
+                    id INTEGER PRIMARY KEY,
+                    url VARCHAR(255),
+                    ip VARCHAR(50),
+					count INTEGER,
+					rate INTEGER,
+                    time INTEGER)");
+
+			$this->proxyLog->log("ips table created!");
+
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+
+		try {
+
+			$db->exec('CREATE INDEX url ON ips (url)');
+
+			$db->exec('CREATE INDEX ip ON ips (ip)');
+
+			$db->exec('CREATE INDEX count ON ips (count)');
+
+			$db->exec('CREATE INDEX rate ON ips (rate)');
+
+			$db->exec('CREATE INDEX time ON ips (time)');
+
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+
+	}
+
+	public function getClickCount()
+	{
+		$db = $this->getConnection();
+
+		try {
+
+			$sth = $db->prepare("SELECT total FROM clicks WHERE id = :id");
+
+			$sth->execute(array(':id' => 1)) or die($this->getDatabaseErrorMessage());
+
+			$r = $sth->fetchAll();
+
+			return $r[0]['total'];
+
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+	}
+
+	public function selectLastRequest()
+	{
+
+		$db = $this->getConnection();
+
+		try {
+
+			$sth = $db->prepare("SELECT time, id, count, rate FROM ips WHERE url = :url AND ip = :ip");
+
+			$sth->execute(array(':url' => $this->resourceUrl, ':ip' => $this->ip)) or die($this->getDatabaseErrorMessage());
+
+			$r = $sth->fetchAll();
+
+			return $r[0];
+
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+	}
+
+	public function updateResourceIp($id)
+	{
+		$db = $this->getConnection();
+
+		try {
+
+			$sth = $db->prepare("UPDATE ips SET id=:id, url=:url, ip=:ip, count=:count, rate=:rate, time=:time WHERE id = :id");
+
+			$sth->bindValue(':id', $id);
+
+			$sth->bindValue(':url', $this->resourceUrl);
+
+			$sth->bindValue(':ip', $this->ip);
+
+			$sth->bindValue(':count', $this->count);
+
+			$sth->bindValue(':rate', $this->rate);
+
+			$sth->bindValue(':time', $this->microtime);
+
+			$sth->execute() or die($this->getDatabaseErrorMessage());
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+
+	}
+
+	public function updateClicks($id, $total)
+	{
+
+		$db = $this->getConnection();
+
+		try {
+
+			$sth = $db->prepare("UPDATE clicks SET total=:total WHERE id = :id");
+
+			$sth->bindValue(':id', $id);
+
+			$sth->bindValue(':total', $total);
+
+			$sth->execute() or die($this->getDatabaseErrorMessage());
+		}
+		catch(PDOException $e)
+		{
+
+			$this->proxyLog->log($e->getMessage());
+		}
+
+	}
+
+	public function insertResourceIp()
+	{
+		$db = $this->getConnection();
+
+		try {
+
+			$sql = "INSERT INTO ips (id, url, ip, count, rate, time) VALUES (:id,:url,:ip,:count,:rate,:time)";
+
+			$q = $db->prepare($sql);
+
+			$q->bindValue(':id', null);
+
+			$q->bindValue(':url', $this->resourceUrl);
+
+			$q->bindValue(':ip', $this->ip);
+
+			$q->bindValue(':count', $this->count);
+
+			$q->bindValue(':rate', $this->rate);
+
+			$q->bindValue(':time', $this->microtime);
+
+			$q->execute() or die($this->getDatabaseErrorMessage());
+
+		}
+		catch(PDOException $e)
+		{
+			$this->proxyLog->log($e->getMessage());
+		}
+
+	}
+
+	public function canBeCleaned($count, $lastTime, $rate)
+	{
+		$tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastTime);
+
+		return $count - $tsTotalSeconds * $rate <= 0;
+	}
+
+	public function fetchAllIps() {
 
 		$this->microtime = microtime(true);
 
@@ -1481,13 +1937,9 @@ class RateMeter
 
 		try {
 
-			$sth = $db->prepare("SELECT time, id FROM ips WHERE url = :url AND ip = :ip");
+			$sth = $db->prepare("SELECT * FROM ips;");
 
-			$db->beginTransaction();
-
-			$sth->execute(array(':url' => $this->resourceUrl, ':ip' => $this->ip)) or die($this->getDatabaseErrorMessage());
-
-			$db->commit();
+			$sth->execute() or die($this->getDatabaseErrorMessage());
 
 			$r = $sth->fetchAll();
 
@@ -1500,92 +1952,57 @@ class RateMeter
 		}
 	}
 
-	public function updateResourceIp($id, $time)
+
+	public function rateMeterCleanup()
 	{
 		$db = $this->getConnection();
 
-		try {
+		$r = $this->fetchAllIps();
 
-			$sth = $db->prepare("UPDATE ips SET id=:id, url=:url, ip=:ip, time=:time WHERE id = :id");
+		$deletes = array();
 
-			$db->beginTransaction();
-
-			$sth->bindValue(':id', $id);
-
-			$sth->bindValue(':url', $this->resourceUrl);
-
-			$sth->bindValue(':ip', $this->ip);
-
-			$sth->bindValue(':time', $time);
-
-			$sth->execute() or die($this->getDatabaseErrorMessage());
-
-			$db->commit();
-		}
-		catch(PDOException $e)
+		foreach ($r as $item => $value)
 		{
-			$this->proxyLog->log($e->getMessage());
-		}
 
-	}
+			if($this->canBeCleaned($value['count'], $value['time'], $value['rate'])){
 
-	public function insertResourceIp()
-	{
-		$db = $this->getConnection();
+				$this->proxyLog->log($value['id'] . "::id");
 
-		try {
-
-			$sql = "INSERT INTO ips (id, url, ip, time) VALUES (:id,:url,:ip,:time)";
-
-			$q = $db->prepare($sql);
-
-			$db->beginTransaction();
-
-			$q->bindValue(':id', null);
-
-			$q->bindValue(':url', $this->resourceUrl);
-
-			$q->bindValue(':ip', $this->ip);
-
-			$q->bindValue(':time', $this->microtime);
-
-			$q->execute() or die($this->getDatabaseErrorMessage());
-
-			$db->commit();
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
-
-	}
-
-	public function rateMeterCleanup($time)
-	{
-		$db = $this->getConnection();
-
-		$sth = $db->prepare("DELETE FROM ips WHERE time < :time");
-
-		try {
-
-			$db->beginTransaction();
-
-			$sth->execute(array(':time' => $time));
-
-			$db->commit();
-
-			if ($sth->rowCount() > 0) {
-
-				$this->proxyLog->log('Performed 14 day cleanup on sqlite database');
+				$deletes[] = $value['id'];
 
 			}else{
 
-				$this->proxyLog->log('Cleanup occurred but no rows have been removed');
+				$this->proxyLog->log('Nothing to clean.');
+
 			}
 
-		} catch (Exception $e) {
+		}
 
-			$this->proxyLog->log($e->getMessage());
+		$hasDeletes = (boolean)$deletes;
+
+		if($hasDeletes){
+
+			$placeholders = implode(',', array_fill(0, count($deletes), '?'));
+
+			$stmt = $db->prepare('DELETE FROM ips WHERE id IN(' . $placeholders . ')'); //Using indexed based binding pattern
+
+			foreach ($deletes as $k => $id){
+
+				$stmt->bindValue(($k+1), $id);
+
+			}
+
+			try {
+
+				$stmt->execute();
+
+				$this->proxyLog->log('Cleanup occured.');
+
+			} catch (Exception $e) {
+
+				$this->proxyLog->log($e->getMessage());
+
+			}
 
 		}
 
@@ -1594,42 +2011,38 @@ class RateMeter
 
 	public function checkRateMeter()
 	{
+		$this->microtime = microtime(true);
 
-		$result = $this->selectLastRequestTime();
+		$lastRequest = $this->selectLastRequest();
 
-		if ($result != null || count($result) > 0) {
+		$clickCount = $this->getClickCount();
 
-			$id = $result[0]['id'];
+		$clickCount = $clickCount + 1;
 
-			$timeOfLastRequest = $result[0]['time'];
+		$this->updateClicks(1, $clickCount); //Updating the click table so we know when to clean up (aka after 10,000 requests)
 
-			$totalSeconds = $this->getTimeDifferenceInSeconds($timeOfLastRequest);
+		if ($lastRequest != null || count($lastRequest) > 0) {
 
-			$this->allowedClickRate = ($this->cap / $this->interval); //Allowed clicks per second. Assumes interval in config is seconds (if minutes we need to divide by 60)
+			$count = $lastRequest['count'];
 
-			$this->clickRate = $totalSeconds * $this->allowedClickRate;
+			$tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastRequest['time']);
 
-			$this->updateResourceIp($id, $this->microtime);
+			// $this->debugMeterAlgorithm($count, $tsTotalSeconds, $this->rate);
 
-			if ($this->clickRate <= $this->allowedClickRate) { //Is click rate lower then the allowed rate? If yes, exceeding the click rate limmit. If yes, someone may be trying to squeeze in more requests allowed per second.
+			$count = max(0, $count - $tsTotalSeconds * $this->rate);
 
-				$this->underMeterCap = false;
-
-				$secondPerDay = 86400;
-
-				$twoWeeks = 14 * $secondPerDay; //Another option would be to check the sqlite file size and then do a cleanup
-
-				$twoWeeksAndOlder = $this->microtime - $twoWeeks;
-
-				$this->rateMeterCleanup($twoWeeksAndOlder);
-
-				return;
-
-			}else{
+			if ($count <= $this->countCap) {
 
 				$this->underMeterCap = true;
 
-				return;
+				$count = $count + 1;
+
+				$this->count = $count;
+
+				$this->updateResourceIp($lastRequest['id']);
+
+				return true;
+
 			}
 
 		}else{
@@ -1637,11 +2050,37 @@ class RateMeter
 			$this->insertResourceIp(); //Add item to ips table.
 
 			$this->underMeterCap = true;
+
+			return;
 		}
+
+		$this->underMeterCap = false;
+
+		if($clickCount >= RateMeter::CLEAN_RATEMAP_AFTER)
+		{
+			$this->proxyLog->log("Click count: " . $clickCount);
+
+			$this->rateMeterCleanup();
+
+			$this->updateClicks(1, 0); //Set click counter back to zero after cleanup.
+
+		}
+
+		return;
+
+	}
+	public function debugMeterAlgorithm($count, $tsTotalSeconds, $rate)
+	{
+		$debugCountValue = $count - $tsTotalSeconds * $rate;
+
+		$this->proxyLog->log("Count is ( count - timespan x rate ) : " . $count . " - " . $tsTotalSeconds . " x " . $rate . " = " . $debugCountValue);
+
+		$this->proxyLog->log("debugCountValue:::" . $debugCountValue);
 
 	}
 
-	public function getTimeDifferenceInSeconds($firstTime, $secondTime)
+
+	public function getTimeDifferenceInSeconds($firstTime, $secondTime = null)
 	{
 
 
@@ -1683,6 +2122,12 @@ class RateMeter
 
 	public function underMeterCap()
 	{
+		if(empty($this->countCap) || empty($this->ratelimitperiod)) {
+
+			return true;
+
+		}
+
 		$this->checkRateMeter();
 
 		if($this->underMeterCap)
@@ -1714,6 +2159,7 @@ class RateMeter
 
 	function __destruct()
 	{
+		$this->con = null;
 
 	}
 
@@ -1753,6 +2199,8 @@ class ProxyConfig {
 
 		$this->proxyConfig['allowedreferers'] = $allowedReferers; //Add above array to the proxyconfig property
 
+		$xmlParser = null;
+
 	}
 
 	function lowercaseArrayKeys($array, $case)
@@ -1774,7 +2222,7 @@ class ProxyConfig {
 
 	public function normalizeServerUrls($serverUrls) {
 
-		$formatedData = [];
+		$formatedData = array();
 
 		foreach ($serverUrls as $key => $item) {
 
@@ -1969,6 +2417,11 @@ class XmlParser
 		}
 
 		array_pop($this->results);
+	}
+
+	function __destruct()
+	{
+
 	}
 
 }
