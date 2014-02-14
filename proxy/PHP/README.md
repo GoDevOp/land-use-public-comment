@@ -12,8 +12,8 @@ A PHP proxy that handles support for
 ##Instructions
 
 * Download and unzip the .zip file, or clone the repository.
-* Install the contents of the PHP folder by adding all files into a web directory
-* Test that the proxy is able to forward pages directly in the browser using syntax similar to the following. Note, in order to test the proxy like as follows be sure to add a ```*``` to the ```allowedReferers``` property in the proxy.config.
+* Install the contents of the PHP folder by adding all files into a web directory.
+* Test that the proxy is able to forward requests directly in the browser using:
 ```
 http://[yourmachine]/PHP/proxy.php?http://services.arcgisonline.com/ArcGIS/rest/services/?f=pjson
 ```
@@ -26,7 +26,8 @@ http://[yourmachine]/PHP/proxy.php?http://services.arcgisonline.com/ArcGIS/rest/
         proxyUrl: "http://[yourmachine]/PHP/proxy.php"
     });
 ```
-* Security tip: verify that the ```proxy.config``` file is not accessible via the Internet and that the PHP server is configured correctly. To verify the proxy page setup, open ```http://[yourmachine]/PHP/proxy-verification.php``` page in a web browser and follow the  instructions.
+* Security tip: By default, the proxy.config allows any referrer. To lock this down, replace the  ```*``` in the ```allowedReferers``` property with your own application URLs.
+* Security tip: Verify that the ```proxy.config``` file is not accessible via the Internet and that the PHP server is configured correctly. To verify the proxy setup, open ```http://[yourmachine]/PHP/proxy-verification.php``` in a web browser and follow the  instructions.
 
 
 ##Proxy Configuration Settings
@@ -40,7 +41,7 @@ http://[yourmachine]/PHP/proxy.php?http://services.arcgisonline.com/ArcGIS/rest/
     * **matchAll="true"**: When true all requests that begin with the specified URL are forwarded. Otherwise, the URL requested must match exactly.
     * **username**: Username to use when requesting a token - if needed for ArcGIS Server token based authentication.
     * **password**: Password to use when requesting a token - if needed for ArcGIS Server token based authentication.
-    * **clientId**.  Used with clientSecret for OAuth authentication to obtain a token - if needed for OAuth 2.0 authentication.
+    * **clientId**:  Used with clientSecret for OAuth authentication to obtain a token - if needed for OAuth 2.0 authentication.
     * **clientSecret**: Used with clientId for OAuth authentication to obtain a token - if needed for OAuth 2.0 authentication.
     * **oauth2Endpoint**: When using OAuth 2.0 authentication specify the portal specific OAuth 2.0 authentication endpoint. The default value is https://www.arcgis.com/sharing/oauth2/.
     * **rateLimit**: The maximum number of requests with a particular referer over the specified **rateLimitPeriod**.
@@ -51,9 +52,14 @@ http://[yourmachine]/PHP/proxy.php?http://services.arcgisonline.com/ArcGIS/rest/
 The proxy consists of the following files:
 * proxy.config: This file contains the configuration settings for the proxy. This is where you will define all the resources that will use the proxy.
 * proxy.php: The actual proxy application. In most cases you will not need to modify this file.
-* proxy.sqlite: This file is created dynamically after proxy.php runs.  This file support rate metering.
-* proxy_log_xml.log:  This file by default is dynamically created after the proxy.php runs.
-* proxy_log_json.log:  This file is dynamically created after the proxy.php runs, if the proxy code is changed to use JSON in the proxy.config.
+
+Other useful files in the repo:
+* .htaccess: This file is an example Apache web server file which includes recommended file filtering.
+* proxy-verification.php: Useful testing page if you have installation problem.
+
+Files created by the proxy:
+* proxy.sqlite: This file is created dynamically after proxy.php runs.  This file supports rate metering.
+* proxy_log.log: This file is created when the proxy.php runs (and logging is enabled).
 
 ##Requirements
 
@@ -64,10 +70,15 @@ The proxy consists of the following files:
 
 ### Example Configurations
 
-The PHP proxy supports both XML and JSON configurations. XML is the default.  To change the default you must switch the comments shown in this [link](https://github.com/phpmaps/resource-proxy/blob/master/PHP/proxy.php#L1981-L1983).
+The PHP proxy supports both XML and JSON configurations.
+XML is the default.
+To change the default you must switch ````$proxyConfig->useXML();```` to ````$proxyConfig->useJSON();```` at the bottom of the proxy.php file.
 No matter what style configuration chosen, always save the configuration as ```proxy.config```.
-When using this proxy for testing or research and development you may want to add ```*``` to the ```allowedReferers``` property.  However, using ```*``` in production is not reccomended. In order to test the proxy like
-below make sure to add a ```*``` to the ```allowedReferers``` property.  Note, the example configuration file contains the ```*``` within ```allowedReferers```.
+When using this proxy for testing or research and development you may want to add ```*``` to the ```allowedReferers``` property.
+However, using ```*``` in production is not recommended.
+In order to test the proxy like below make sure to add a ```*``` to the ```allowedReferers``` property.
+Note, the example configuration file contains the ```*``` within ```allowedReferers```.
+
 ```
 http://[yourmachine]/PHP/proxy.php?http://[machineyouknow]/arcgis/rest/services
 ```
@@ -86,32 +97,32 @@ XML example
           url="http://sampleserver6.arcgisonline.com"
           username="username"
           password="password"
-          rateLimit="20"
-          rateLimitPeriod="1"
+          rateLimit="120"
+          rateLimitPeriod="60"
           matchAll="true"/>
 
       <serverUrl
           url="geoenrich.arcgis.com"
           username="username"
           password="password"
-          rateLimit="20"
-          rateLimitPeriod="1"
+          rateLimit="120"
+          rateLimitPeriod="60"
           matchAll="true"/>
 
       <serverUrl
-          url="http://route.arcgis.com/"
+          url="http://route.arcgis.com"
           matchAll="true"
           oauth2Endpoint="https://www.arcgis.com/sharing/oauth2"
           clientId="6Xo1x5L1tz7k9Kn2dc"
-          clientSecret="5dca5d50d0e6fe422c867b6efcf969b6a2"
-          rateLimit="20"
-          rateLimitPeriod="1">
+          clientSecret="5dca5d50d0e6fe422c867b6efcf969b6ca2"
+          rateLimit="120"
+          rateLimitPeriod="60">
       </serverUrl>
 
       <serverUrl
           url="http://services.arcgisonline.com/ArcGIS/rest/services/"
-          rateLimit="20"
-          rateLimitPeriod="1"
+          rateLimit="120"
+          rateLimitPeriod="60"
           matchAll="false"/>
 
   </serverUrls>
@@ -137,8 +148,8 @@ JSON example
                     "url": "http://sampleserver6.arcgisonline.com",
                     "username": "username",
                     "password": "password",
-                    "rateLimit": "20",
-                    "rateLimitPeriod": "1",
+                    "rateLimit": "120",
+                    "rateLimitPeriod": "60",
                     "matchAll": true
                 }
             ]
@@ -149,8 +160,8 @@ JSON example
                     "url": "geoenrich.arcgis.com",
                     "username": "username",
                     "password": "password",
-                    "rateLimit": "20",
-                    "rateLimitPeriod": "1",
+                    "rateLimit": "120",
+                    "rateLimitPeriod": "60",
                     "matchAll": true
                 }
             ]
@@ -158,12 +169,12 @@ JSON example
         {
             "serverUrl" : [
                 {
-                    "url": "http://route.arcgis.com/",
+                    "url": "http://route.arcgis.com",
                     "oauth2Endpoint": "https://www.arcgis.com/sharing/oauth2",
                     "clientId": "6Xo1dcx5L1tz7k9Kn2",
-                    "clientSecret": "5a5d50d0e6fe422c867b6efcf969bdc6a2",
-                    "rateLimit": "20",
-                    "rateLimitPeriod": "1",
+                    "clientSecret": "5a5d50d0e6fe422c867b6efcf969bdcc6a2",
+                    "rateLimit": "120",
+                    "rateLimitPeriod": "60",
                     "matchAll": true
                 }
             ]
@@ -172,8 +183,8 @@ JSON example
             "serverUrl" : [
                 {
                     "url": "http://services.arcgisonline.com/ArcGIS/rest/services/",
-                    "rateLimit": "20",
-                    "rateLimitPeriod": "1",
+                    "rateLimit": "120",
+                    "rateLimitPeriod": "60",
                     "matchAll": false
                 }
             ]
@@ -184,7 +195,7 @@ JSON example
 
 ## Guide for Unix and Mac using Apache's HTTP Server
 
-### I see my configuration file on the Internet after running the verification test?
+### I see my configuration file on the Internet after running the verification test
 
 This is a problem because ```proxy.config``` may contain sensitive credentials.  To resolve this, enable file filtering on your web server.  Apache users can do this by adding
  the following lines to the ```.htaccess``` file.  Note in order to use ```.htaccess``` files you must enable
@@ -210,13 +221,13 @@ Example .htaccess file:
 </Files>
 ```
 
-### When I ran the verification test my browser displays raw PHP code?
+### When I ran the verification test my browser displays raw PHP code
 
 Raw PHP code in the browser indicates that the PHP server is not configured correctly.
 If you see this, troubleshoot the Apache ```httpd.conf``` file.  On Mac, typically your built in Apache httpd.conf file is located here ```/private/etc/apache2/httpd.conf```.
 On a Linux machine sometimes the ```httpd.conf``` file is located in ```etc/httpd/conf```.
 A properly configured httpd.conf file, looks something like below. Note that the php_5module
-is uncommented and libphp5.so is present the modules directory.  More help [here](http://php.net/manual/en/install.macosx.bundled.php).
+is uncommented and libphp5.so is present in the modules directory.  More help [here](http://php.net/manual/en/install.macosx.bundled.php).
 
 
 In addition Apache must be told to accept .php file extensions.  This can also be done by adding the below
@@ -236,17 +247,16 @@ lines in your ```httpd.conf```.
 
 On a Mac an alternative is to uncommented the line that says ```Include /private/etc/apache2/other/*.conf``` in the ```https.conf``` file.
 
-###PHP version has failed?
+###PHP version check has failed
 
 This is because the minimum proxy requirements are set to PHP version 5.4.2.  If this fails, the recommendation is to install the most recent stable PHP release.
 Other PHP versions may work, however PHP version 5.4.2 contains important security updates.
 
-### My directory is not writable?
+### My directory is not writable
 
-To resolve this you'll need to change the directory to read/write where the ```proxy-verification.php``` file is located.  Changing permission on a folder typically requires administrative permissions to make the change.  The reason read/write is needed
-is because this proxy writes to a log and to a sqlite file.
+To resolve this you'll need to change the directory to read/write where the ```proxy-verification.php``` file is located.  Changing permission on a folder typically requires administrative permissions to make the change.  The reason read/write is needed is because this proxy writes to a log and to a sqlite file.
 
-### OpenSSL, PDO Sqlite and cURL failed?
+### OpenSSL, PDO Sqlite and cURL failed
 
 OpenSSL, PDO Sqlite and cURL are PHP extensions.  Depending on how you installed PHP there may be a  wizard to install PHP extensions or you may need to manually download / build and configure the required extensions.  This guide discusses both options to obtain OpenSSL, PDO Sqlite and Curl.
 
@@ -266,12 +276,12 @@ Alternatively (if you don't want to compile PHP yourself), there are plenty of g
 You may want to try out these solutions:
 
 * [Zend Server Project](http://www.zend.com/en/products/server/index)
-* [MAMP](http://www.mamp.info/en/index.html).
+* [MAMP](http://www.mamp.info/en/index.html)
 
 Note, on Linux the ```configure```, ```make```, ```make install``` may likely be the shortest path to success to resolve missing extensions.
 
 
-### I see errors regarding dates and times?
+### I see errors regarding dates and times
 
 Make sure you've set the ```date.timezone``` value in the ```php.ini``` file.  For valid PHP timezones, see this [documentation](http://php.net/manual/en/timezones.php). The ```proxy-verification.php``` page
 makes an attempt to output the location of the ```php.ini``` used by the PHP server.
@@ -287,24 +297,29 @@ by finding the Apache executable and then issuing the proper command in the term
 sudo /usr/sbin/apachectl restart
 ```
 
-### When requesting Tiled Map services via the proxy slower performance is observed then when not using the proxy?
+### When requesting Tiled Map services via the proxy slower performance is observed then when not using the proxy
 
 Proxies are helpful for overcoming certain browser limitations, requests that exceed 2048 characters, accessing resources secured with
 token based authentication and ideal for implementing features like rate limiting.  However proxies do add a little overhead.  If overhead is a concern,
 it's recommended to use proxy rules and avoid such things like ```esri.config.defaults.io.alwaysUseProxy```.  Alternatively, consider
 implementing Cross-origin resource sharing ```CORS``` on the application server.
 
+###Where do I get clientId and clientSecret credentials to leverage OAuth2?
+
+There are several ways to obtain these credentials.  Credentials can be created by signing into [ArcGIS for Developers](https://developers.arcgis.com) and clicking ```Applications``` then ```Create an Application```.  Another option is to sign into [ArcGIS Online](https://arcgis.com) click ```My Content``` then click ```Add Item``` to go through the steps to add an application.  Once the application has been added click the item to ```View item details``` and click ```Register``` within the App Registration section.  Tip: OAuth2 workflows contain a variety of value added features for distributing apps, accessing billable services, and getting usage reports.
+
+
 
 ## Guide for Windows using IIS
 
-### I see my configuration file on the Internet after running the verification test?
+### I see my configuration file on the Internet after running the verification test
 
 This is a problem because ```proxy.config``` may contain sensitive credentials.   The solution to this problem is update IIS so that ```.config``` and ```.sqlite``` file types will be filtered and not be shown to the end user.
 Please refer to the IIS help documentation explaining
 [how to set up request filtering on IIS](http://www.iis.net/configreference/system.webserver/security/requestfiltering/fileextensions).
 
 
-### When I ran the verification test my browser displays raw PHP code?
+### When I ran the verification test my browser displays raw PHP code
 
 When PHP is not installed or configured correctly this is the symptom.  On Windows there are several good 3rd party utilities that make installing and configuring PHP easy.
 The utilities worth looking into are:
@@ -315,18 +330,19 @@ The utilities worth looking into are:
 
 Use the help documentation included in these products to get your PHP server up and running on Windows.
 
-###PHP version has failed?
+###PHP version check has failed
 
 This is because the minimum proxy requirements are set to PHP version 5.4.2.  If this fails, the recommendation is to install the most recent stable PHP release.
 Other PHP versions may work, however PHP version 5.4.2 contains important security updates.
 
 
-### My directory is not writable?
+### My directory is not writable
 
 To resolve this you'll need to change the directory to read/write where the ```proxy-verification.php``` file is located.  In most cases, administrative permissions are needed to change file permission levels.  The reason read/write is needed
-is because this proxy writes to a log and to a sqlite file.  This is usually accomplished by right click on the folder an
+is because this proxy writes to a log and to a sqlite file.  This is usually accomplished by right clicking on the folder
+to open the ```properties``` dialog box and clicking the ```security``` tab.  Use the ```name list box```, select the user, contact, computer, or group whose permissions you want to make writable and assign ```write``` permissions.
 
-### OpenSSL, PDO Sqlite and cURL failed?
+### OpenSSL, PDO Sqlite and cURL failed
 
 If you've chosen to install PHP using either of these utilities, OpenSSL and PDO Sqlite are a part of the PHP install.  However, these extensions need to be activated.  You can do this by uncommenting these lines in the ```php.ini``` file.
 
@@ -336,12 +352,16 @@ If you've chosen to install PHP using either of these utilities, OpenSSL and PDO
 
 After modifying ```php.ini``` restart IIS and run the ```proxy-verification.php``` again.
 
-### When requesting Tiled Map services via the proxy slower performance is observed then when not using the proxy?
+### When requesting Tiled Map services via the proxy slower performance is observed then when not using the proxy
 
 Proxies are helpful for overcoming certain browser limitations, requests that exceed 2048 characters, accessing resources secured with
 token based authentication and ideal for implementing features like rate limiting.  However proxies do add a little overhead.  If overhead is a concern,
 it's recommended to use proxy rules and avoid such things like ```esri.config.defaults.io.alwaysUseProxy```.  Alternatively, consider
 implementing Cross-origin resource sharing ```CORS``` on the application server.
+
+###Where do I get clientId and clientSecret credentials to leverage OAuth2?
+
+There are several ways to obtain these credentials.  Credentials can be created by signing into [ArcGIS for Developers](https://developers.arcgis.com) and clicking ```Applications``` then ```Create an Application```.  Another option is to sign into [ArcGIS Online](https://arcgis.com) click ```My Content``` then click ```Add Item``` to go through the steps to add an application.  Once the application has been added click the item to ```View item details``` and click ```Register``` within the App Registration section.  Tip: OAuth2 workflows contain a variety of value added features for distributing apps, accessing billable services, and getting usage reports.
 
 
 ##Issues

@@ -2,1246 +2,1192 @@
 
 /**
  * PHP Proxy Client
+ *
+ * See https://github.com/Esri/resource-proxy for more information
+ *
  */
 
 error_reporting(0);
 
 class Proxy {
 
-	/**
-	 * Holds proxy configuration parameters
-	 *
-	 * @var ProxyConfig
-	 */
-	public $proxyConfig;
+    /**
+     * Holds proxy configuration parameters
+     *
+     * @var ProxyConfig
+     */
+    public $proxyConfig;
 
-	/**
-	 * Holds the referer assocated with client request
-	 *
-	 * @var string
-	 */
+    /**
+     * Holds the referer assocated with client request
+     *
+     * @var string
+     */
 
-	public $referer;
+    public $referer;
 
-	/**
-	 * Holds a collection of server urls listed in configution (keys same as keys in config, but lowercase).
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds a collection of server urls listed in configution (keys same as keys in config, but lowercase).
+     *
+     * @var array
+     */
 
-	public $serverUrls;
+    public $serverUrls;
 
-	/**
-	 * Log object used for writing messages
-	 *
-	 * @var ProxyLog
-	 */
+    /**
+     * Log object used for writing messages
+     *
+     * @var ProxyLog
+     */
 
-	public $proxyLog;
+    public $proxyLog;
 
-	/**
-	 * Meter object used for rate metering
-	 *
-	 * @var RateMeter
-	 */
+    /**
+     * Meter object used for rate metering
+     *
+     * @var RateMeter
+     */
 
-	public $meter;
+    public $meter;
 
-	/**
-	 * Holds headers returned by the proxied resource
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds headers returned by the proxied resource
+     *
+     * @var array
+     */
 
-	public $headers;
+    public $headers;
 
 
-	/**
-	 * cURL resource used to send HTTP requests
-	 *
-	 * @var resource
-	 */
+    /**
+     * cURL resource used to send HTTP requests
+     *
+     * @var resource
+     */
 
-	public $ch;
+    public $ch;
 
 
-	/**
-	 * Holds the action assocated with the request (post, get)
-	 *
-	 * @var string
-	 */
+    /**
+     * Holds the action assocated with the request (post, get)
+     *
+     * @var string
+     */
 
-	public $proxyMethod;
+    public $proxyMethod;
 
-	/**
-	 * Holds the url being requested
-	 *
-	 * @var string
-	 */
+    /**
+     * Holds the url being requested
+     *
+     * @var string
+     */
 
-	public $proxyUrl;
+    public $proxyUrl;
 
-	/**
-	 * Holds the query string assocated with the request
-	 *
-	 * @var string
-	 */
+    /**
+     * Holds the query string assocated with the request
+     *
+     * @var string
+     */
 
-	public $queryString;
+    public $queryString;
 
-	/**
-	 * Holds the query string with Url and all the Data with key values
-	 *
-	 * @var string
-	 */
+    /**
+     * Holds the query string with Url and all the Data with key values
+     *
+     * @var string
+     */
 
-	public $proxyUrlWithData;
+    public $proxyUrlWithData;
 
-	/**
-	 * Holds the data to be sent with a post request
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds the data to be sent with a post request
+     *
+     * @var array
+     */
 
-	public $proxyData;
+    public $proxyData;
 
-	/**
-	 * Holds the resource being requested (keys are the same keys in the serverUrl config file, except lowercase)
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds the resource being requested (keys are the same keys in the serverUrl config file, except lowercase)
+     *
+     * @var array
+     */
 
-	public $resource;
+    public $resource;
 
-	/**
-	 * Holds current resource being proxied where the array keys are the same keys in the serverUrl config file
-	 *
-	 * @var string
-	 */
+    /**
+     * Number of allowed attempts to get a new token
+     *
+     * @var int
+     */
 
-	public $resourceUrl;
+    public $allowedAttempts = 3;
 
-	/**
-	 * Number of allowed attempts to get a new token
-	 *
-	 * @var int
-	 */
+    /**
+     * Attempt count when getting a new token
+     *
+     * @var int
+     */
 
-	public $allowedAttempts = 3;
+    public $attemptsCount = 0;
 
-	/**
-	 * Attempt count when getting a new token
-	 *
-	 * @var int
-	 */
+    /**
+     * Property indicating if an attempt has been made to get the token from the application session.
+     *
+     * @var boolean
+     */
 
-	public $attemptsCount = 0;
+    public $sessionAttempt = false;
 
-	/**
-	 * Property indicating if an attempt has been made to get the token from the application session.
-	 *
-	 * @var boolean
-	 */
+    /**
+     * Holds url which is used in creating the session key
+     *
+     * @var string
+     */
 
-	public $sessionAttempt = false;
+    public $sessionUrl;
 
-	/**
-	 * Holds url which is used in creating the session key
-	 *
-	 * @var string
-	 */
 
-	public $sessionUrl;
+    /**
+     * Allowed application urls array is just an array of urls
+     *
+     * @var array
+     */
 
+    public $allowedReferers;
 
-	/**
-	 * Allowed application urls array is just an array of urls
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds the response
+     *
+     * @var resource
+     */
 
-	public $allowedReferers;
+    public $response;
 
-	/**
-	 * Holds the response
-	 *
-	 * @var resource
-	 */
+    /**
+     * Holds the response body following curl request
+     *
+     * @var String
+     */
 
-	public $response;
+    public $proxyBody;
 
-	/**
-	 * Holds the response body following curl request
-	 *
-	 * @var String
-	 */
 
-	public $proxyBody;
+    /**
+     * Holds a field to help debug booleans
+     *
+     * @var array
+     */
 
+    public $bool = array(true=>"True", false=>"False");
 
-	/**
-	 * Holds a field to help debug booleans
-	 *
-	 * @var array
-	 */
+    /**
+     * Holds staged file path.
+     *
+     * @var string
+     */
 
-	public $bool = array(true=>"True", false=>"False");
+    private  $unlinkPath;
 
-	/**
-	 * Holds staged file path.
-	 *
-	 * @var string
-	 */
 
-	private  $unlinkPath;
 
+    public function __construct($configuration, $log) {
 
 
-	public function __construct($configuration, $log) {
+        $this->proxyLog = $log;
 
+        $this->proxyConfig = $configuration->proxyConfig;
 
-		$this->proxyLog = $log;
+        $this->serverUrls = $configuration->serverUrls;
 
-		$this->proxyConfig = $configuration->proxyConfig;
+        $this->setupSession();
 
-		$this->serverUrls = $configuration->serverUrls;
+        $this->setupClassProperties();
 
-		$this->setupSession();
+        if ($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == true || $this->proxyConfig['mustmatch'] == "true") {
 
-		$this->setupClassProperties();
+            if($this->isAllowedApplication() == false){
 
-		if ($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == true || $this->proxyConfig['mustmatch'] == "true") {
+                $this->allowedApplicationError();
 
-			if($this->isAllowedApplication() == false){
+            }
 
-				$this->allowedApplicationError();
+            $this->verifyConfiguration();
 
-			}
+            if ($this->meter->underMeterCap()) {
 
-			$this->verifyConfiguration();
+                $this->runProxy();
 
-			if ($this->meter->underMeterCap()) {
+            } else {
 
-				$this->runProxy();
+                $this->rateMeterExceededError();
 
-			} else {
+            }
 
-				$this->rateMeterExceededError();
+        } else if($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == false) {
 
-			}
+            $this->runProxy();
 
-		} else if($this->proxyConfig['mustmatch'] != null && $this->proxyConfig['mustmatch'] == false) {
+        }else{
 
-			$this->runProxy();
+            $this->configurationParameterError();
 
-		}else{
+        }
 
-			$this->configurationParameterError();
+    }
 
-		}
+    public function setupSession()
+    {
+        if (!isset($_SESSION)) {
 
-	}
+            session_start();
 
-	public function setupSession()
-	{
-		if (!isset($_SESSION)) {
+        }
 
-			session_start();
+    }
 
-		}
+    public function makeDirectory($dir, $mode = 0777) //Not implemented.
+    {
+        if (is_dir($dir) || @mkdir($dir,$mode)) return true;
 
-	}
+        if (!$this->makeDirectory(dirname($dir),$mode)) return false;
 
+        return @mkdir($dir,$mode);
 
-	public function makeDirectory($dir, $mode = 0777) //Not implemented.
-	{
-		if (is_dir($dir) || @mkdir($dir,$mode)) return true;
+    }
 
-		if (!$this->makeDirectory(dirname($dir),$mode)) return false;
+    public function verifyConfiguration()
+    {
+        if (!isset($this->resource['ratelimit']) || !isset($this->resource['ratelimitperiod'])) {
 
-		return @mkdir($dir,$mode);
+            $this->resource['ratelimit'] = null;
 
-	}
+            $this->resource['ratelimitperiod'] = null;
+        }
 
+        if ($this->canProcessRequest()) {
 
-	public function verifyConfiguration()
-	{
-		if (!isset($this->resource['ratelimit']) || !isset($this->resource['ratelimitperiod'])) {
+            $this->meter = new RateMeter($this->resource['url'], $this->resource['ratelimit'], $this->resource['ratelimitperiod'], $this->proxyLog); //need to pass meter interval and meter cap
 
-			$this->resource['ratelimit'] = null;
+        } else {
 
-			$this->resource['ratelimitperiod'] = null;
-		}
+            $this->canProcessRequestError();
 
-		if ($this->canProcessRequest()) {
+        }
+    }
 
-			$this->meter = new RateMeter($this->resource['url'], $this->resource['ratelimit'], $this->resource['ratelimitperiod'], $this->proxyLog); //need to pass meter interval and meter cap
+    public function configurationParameterError()
+    {
 
-		} else {
+        $this->proxyLog->log("Malformed 'mustMatch' property in config");
 
-			$this->canProcessRequestError();
+        header('Status: 200', true, 200);
 
-		}
-	}
+        header('Content-Type: application/json');
 
-	public function configurationParameterError()
-	{
+        $configError = array(
+                "error" => array("code" => 412,
+                        "details" => array("Detected malformed 'mustMatch' property in configuration. The server does not meet one of the preconditions that the requester put on the request."),
+                        "message" => "Proxy failed due to configuration error."
+                ));
 
-		$this->proxyLog->log("Malformed 'mustMatch' property in config");
+        echo json_encode($configError);
 
-		header('Status: 200', true, 200);
+        exit();
+    }
 
-		header('Content-Type: application/json');
+    public function rateMeterExceededError()
+    {
 
-		$configError = array(
-				"error" => array("code" => 412,
-						"details" => array("Detected malformed 'mustMatch' property in configuration. The server does not meet one of the preconditions that the requester put on the request."),
-						"message" => "Proxy failed due to configuration error."
-				));
+        $this->proxyLog->log("Rate meter exceeded by " . $_SERVER['REMOTE_ADDR']);
 
-		echo json_encode($configError);
+        header('Status: 200', true, 200);
 
-		exit();
-	}
+        header('Content-Type: application/json');
 
-	public function rateMeterExceededError()
-	{
+        $exceededError = array(
+                "error" => array("code" => 402,
+                "details" => array("This is a metered resource, number of requests have exceeded the rate limit interval."),
+                "message" => "Unable to proxy request for requested resource."
+        ));
 
-		$this->proxyLog->log("Rate meter exceeded by " . $_SERVER['REMOTE_ADDR']);
+        echo json_encode($exceededError);
 
-		header('Status: 200', true, 200);
+        exit();
+    }
 
-		header('Content-Type: application/json');
+    public function canProcessRequestError()
+    {
 
-		$exceededError = array(
-				"error" => array("code" => 402,
-				"details" => array("This is a metered resource, number of requests have exceeded the rate limit interval."),
-				"message" => "Unable to proxy request for requested resource."
-		));
+        $this->proxyLog->log("Proxy could not resolve requested url - " . $this->proxyUrl . ".  Possible solution would be to update 'mustMatch', 'matchAll' or 'url' property in config.");
 
-		echo json_encode($exceededError);
+        header('Status: 200', true, 200);
 
-		exit();
-	}
+        header('Content-Type: application/json');
 
-	public function canProcessRequestError()
-	{
+        $configError = array(
+                "error" => array("code" => 412,
+                        "details" => array("The proxy tried to resolve a url that was not found in the configuration file.  Possible solution would be to add another serverUrl into the configuration file or look for typos in the configuration file."),
+                        "message" => "Proxy failed due to configuration error."
+                ));
 
-		$this->proxyLog->log("Proxy could not resolve requested url - " . $this->proxyUrl . ".  Possible solution would be to update 'mustMatch', 'matchAll' or 'url' property in config.");
+        echo json_encode($configError);
 
-		header('Status: 200', true, 200);
+        exit();
+    }
 
-		header('Content-Type: application/json');
+    public function allowedApplicationError()
+    {
 
-		$configError = array(
-				"error" => array("code" => 412,
-						"details" => array("The proxy tried to resolve a prohibited or malformed 'url'.  The server does not meet one of the preconditions that the requester put on the request."),
-						"message" => "Proxy failed due to configuration error."
-				));
+        header('Status: 200', true, 200);
 
-		echo json_encode($configError);
+        header('Content-Type: application/json');
 
-		exit();
-	}
+        $allowedApplicationError = array(
+                "error" => array("code" => 402,
+                "details" => array("This is a protected resource.  Application access is restricted."),
+                "message" => "Application access is restricted.  Unable to proxy request."
+        ));
 
-	public function allowedApplicationError()
-	{
+        echo json_encode($allowedApplicationError);
 
-		header('Status: 200', true, 200);
+        exit();
+    }
 
-		header('Content-Type: application/json');
+    public function setProxyHeaders()
+    {
+        $header_size = curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
 
-		$allowedApplicationError = array(
-				"error" => array("code" => 402,
-				"details" => array("This is a protected resource.  Application access is restricted."),
-				"message" => "Application access is restricted.  Unable to proxy request."
-		));
+        $header_content = trim(substr($this->response,0, $header_size));
 
-		echo json_encode($allowedApplicationError);
+        $headers = preg_split( '/\r\n|\r|\n/', $header_content);
 
-		exit();
-	}
+        $this->headers = $headers;
 
-	public function setProxyHeaders()
-	{
-		$header_size = curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
+        $hasHeaders = (boolean)$headers;
 
-		$header_content = trim(substr($this->response,0, $header_size));
+        if($hasHeaders){
 
-		$headers = preg_split( '/\r\n|\r|\n/', $header_content);
+            foreach($this->headers as $key => $value) {
 
-		$this->headers = $headers;
+                if (stripos($value,'ETag:') !== false || stripos($value,'Content-Type:') !== false
+                || stripos($value,'Connection:') !== false || stripos($value,'Pragma:') !== false
+                || stripos($value,'Expires:') !== false) {
 
-		$hasHeaders = (boolean)$headers;
+                    header($value); //Sets the header
+                }
+            }
 
-		if($hasHeaders){
+        }else{
 
-			foreach($this->headers as $key => $value) {
+            header("Content-Type: text/plain;charset=utf-8"); //If preg_split does not evaulate use text/plain
+        }
+    }
 
-				if (stripos($value,'ETag:') !== false || stripos($value,'Content-Type:') !== false
-				|| stripos($value,'Connection:') !== false || stripos($value,'Pragma:') !== false
-				|| stripos($value,'Expires:') !== false) {
+    public function setResponseBody()
+    {
 
-					header($value); //Sets the header
-				}
-			}
+        $header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
 
-		}else{
+        $this->proxyBody = substr($this->response, $header_size);
 
-			header("Content-Type: text/plain;charset=utf-8"); //If preg_split does not evaulate use text/plain
-		}
-	}
+    }
 
-	public function setResponseBody()
-	{
+    public function getResponse()
+    {
 
-		$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
+        echo $this->proxyBody;
 
-		$this->proxyBody = substr($this->response, $header_size);
+        $this->proxyLog->log("Proxy complete");
 
-	}
+        $this->proxyConfig = null;
 
-	public function getResponse()
-	{
+        $this->meter = null;
 
-		echo $this->proxyBody;
+        $this->proxyLog = null;
 
-		$this->proxyLog->log("Proxy complete");
+        exit();
+    }
 
-		$this->proxyConfig = null;
 
-		$this->meter = null;
+    public function setupClassProperties()
+    {
 
-		$this->proxyLog = null;
+        try {
 
-		exit();
-	}
+            if (!empty($_POST) && empty($_FILES)) { // Is it a POST without files?
 
+                $this->proxyLog->log('POST detected');
 
-	public function setupClassProperties()
-	{
+                $this->proxyUrl = $_SERVER['QUERY_STRING'];
 
-		try {
+                $this->proxyData = $_POST;
 
-			if (!empty($_POST) && empty($_FILES)) { // Is it a POST without files?
+                $this->proxyMethod = "POST";
 
-				$this->proxyLog->log('POST detected');
+            } else if (!empty($_POST) && !empty($_FILES)) { // Is it a POST with files?
 
-				$this->proxyUrl = $_SERVER['QUERY_STRING'];
+                $this->proxyLog->log('FILES detected');
 
-				$this->proxyData = $_POST;
+                $this->proxyUrl = $_SERVER['QUERY_STRING'];
 
-				$this->proxyMethod = "POST";
+                $this->proxyData = $_POST;
 
-			} else if (!empty($_POST) && !empty($_FILES)) { // Is it a POST with files?
+                $this->proxyMethod = "FILES";
 
-				$this->proxyLog->log('FILES detected');
+            } else if (empty($_POST) && empty($_FILES)) { // It must be a GET!
 
-				$this->proxyUrl = $_SERVER['QUERY_STRING'];
+                $this->proxyLog->log('GET detected');
 
-				$this->proxyData = $_POST;
+                $p = preg_split("/\?/", $_SERVER['QUERY_STRING']); // Finds question marks in query string
 
-				$this->proxyMethod = "FILES";
+                $this->proxyUrl = $p[0];
 
-			} else if (empty($_POST) && empty($_FILES)) { // It must be a GET!
+                $this->proxyUrlWithData = $_SERVER['QUERY_STRING'];
 
-				$this->proxyLog->log('GET detected');
+                $this->proxyMethod = "GET";
+            }
 
-				$p = preg_split("/\?/", $_SERVER['QUERY_STRING']); // Finds question marks in query string
+        } catch (Exception $e) {
 
-				$this->proxyUrl = $p[0];
 
-				$this->proxyUrlWithData = $_SERVER['QUERY_STRING'];
+            $this->proxyLog->log("Proxy could not detect request method action type (POST, GET, FILES).");
+        }
 
-				$this->proxyMethod = "GET";
-			}
+    }
 
-		} catch (Exception $e) {
+    public function formatWithPrefix($url)
+    {
+        if(substr($url, 0, 4) != "http"){
 
+            if(substr($this->proxyUrl, 0, 5) == "https") {
 
-			$this->proxyLog->log("Proxy could not detect request method action type (POST, GET, FILES).");
-		}
+                $url = "https://" . $url;
 
-	}
+            }else{
 
-	public function formatWithPrefix($url)
-	{
-		if(substr($url, 0, 4) != "http"){
+                $url = "http://" . $url;
+            }
 
-			if(substr($this->proxyUrl, 0, 5) == "https") {
+        }
 
-				$url = "https://" . $url;
+        return $url;
+    }
 
-			}else{
+    public function removeTrailingSlash($url)
+    {
+        if (substr($url, -1) == '/')
+        {
+            $url = rtrim($url, "/");
+        }
 
-				$url = "http://" . $url;
-			}
+        return $url;
 
-		}
+    }
 
-		return $url;
-	}
+    public function resolveDoubleSlashCondition($url)
+    {
+        if (substr($url, 0, strlen("//")) == "//") {
 
-	public function resolveDoubleSlashCondition($url)
-	{
-		if (substr($url, 0, strlen("//")) == "//") {
+            $url = substr($url, strlen("//"));
+        }
 
-			$url = substr($url, strlen("//"));
-		}
+        return $url;
 
-		return $url;
+    }
 
-	}
+    public function sanitizeUrl($url)
+    {
+        $url = $this->resolveDoubleSlashCondition($url);
 
-	public function canProcessRequest()
-	{
-		$canProcess = false;
+        $url = $this->formatWithPrefix($url);
 
-		if ($this->proxyConfig['mustmatch'] == false || $this->proxyConfig['mustmatch'] === "false") {
+        $url = $this->removeTrailingSlash($url);
 
-			$canProcess = true;
+        return $url;
 
-		} else if ($this->proxyConfig['mustmatch'] == true || $this->proxyConfig['mustmatch'] == "true") {
+    }
 
-			foreach ($this->serverUrls as $key => $value) {
+    public function canProcessRequest()
+    {
+        $canProcess = false;
 
-				$s = $value['serverurl'][0];
+        if ($this->proxyConfig['mustmatch'] == false || $this->proxyConfig['mustmatch'] === "false") {
 
-				$s['url'] = $this->resolveDoubleSlashCondition($s['url']);
+            $canProcess = true;
 
-				$s['url'] = $this->formatWithPrefix($s['url']);
+        } else if ($this->proxyConfig['mustmatch'] == true || $this->proxyConfig['mustmatch'] == "true") {
 
-				if(is_string($s['matchall'])){
+            foreach ($this->serverUrls as $key => $value) {
 
-					$mustmatch = strtolower($s['matchall']);
+                $s = $value['serverurl'][0];
 
-					$s['matchall'] = $mustmatch;
+                $s['url'] = $this->sanitizeUrl($s['url']); //Do all the url cleanups and checks at once
 
-				}
+                if(is_string($s['matchall'])){
 
-				if ($s['matchall'] == true || $s['matchall'] === "true") {
+                    $mustmatch = strtolower($s['matchall']);
 
-					$urlStartsWith = $this->startsWith($this->proxyUrl, $s['url']);
+                    $s['matchall'] = $mustmatch;
 
-					if ($urlStartsWith){
+                }
 
-						$this->resource = $s;
+                if ($s['matchall'] == true || $s['matchall'] === "true") {
 
-						$this->sessionUrl = $s['url'];
+                    $urlStartsWith = $this->startsWith($this->proxyUrl, $s['url']);
 
-						$canProcess = true;
+                    if ($urlStartsWith){
 
-						return $canProcess;
+                        $this->resource = $s;
 
-					}
+                        $this->sessionUrl = $s['url'];
 
-				} else if ($s['matchAll'] == false || $s['matchall'] === "false"){
+                        $canProcess = true;
 
-					$isEqual = $this->equals($this->proxyUrl, $s['url']);
+                        return $canProcess;
 
-					if($isEqual){
+                    }
 
-						$this->resource = $s;
+                } else if ($s['matchAll'] == false || $s['matchall'] === "false"){
 
-						$this->sessionUrl = $s['url'];
+                    $isEqual = $this->equals($this->proxyUrl, $s['url']);
 
-						$canProcess = true;
+                    if($isEqual){
 
-						return $canProcess;
-					}
+                        $this->resource = $s;
 
-				}
-			}
+                        $this->sessionUrl = $s['url'];
 
-		} else {
+                        $canProcess = true;
 
-			$this->proxyLog->log("Proxy has failed. Review configuration file for errors.");
+                        return $canProcess;
+                    }
 
-			$canProcess = false;
-		}
+                }
+            }
 
-		return $canProcess;
-	}
+        } else {
 
+            $this->proxyLog->log("Proxy has failed. Review configuration file for errors.");
 
-	public function getRequestConfig()
-	{
+            $canProcess = false;
+        }
 
-		return $this->requestConfig;
+        return $canProcess;
+    }
 
-	}
 
-	public function useSessionToken()
-	{
+    public function getRequestConfig()
+    {
 
-		$sessonKey = 'token_for_' . $this->sessionUrl;
+        return $this->requestConfig;
 
-		$sessonKey = sprintf("'%s'", $sessonKey);
+    }
 
-		if(isset($_SESSION[$sessonKey])) //Try to get token from session
-		{
+    public function useSessionToken()
+    {
 
-			$token = $_SESSION[$sessonKey];
+        $sessonKey = 'token_for_' . $this->sessionUrl;
 
-			$this->appendToken($token);
+        $sessonKey = sprintf("'%s'", $sessonKey);
 
-			$this->sessionAttempt = true;
+        if(isset($_SESSION[$sessonKey])) //Try to get token from session
+        {
 
-			$this->proxyLog->log("Using session token!");
+            $token = $_SESSION[$sessonKey];
 
-		}
+            $this->appendToken($token);
 
+            $this->sessionAttempt = true;
 
-	}
+            $this->proxyLog->log("Using session token");
 
-	public function runProxy()
-	{
+        }
+    }
 
-		$this->useSessionToken();
+    public function runProxy()
+    {
 
-		if($this->proxyMethod == "FILES"){
+        $this->useSessionToken();
 
-			$this->proxyFiles();
+        if($this->proxyMethod == "FILES"){
 
+            $this->proxyFiles();
 
-		}else if($this->proxyMethod == "POST"){
 
-			$this->proxyPost();
+        }else if($this->proxyMethod == "POST"){
 
-		}else if($this->proxyMethod == "GET"){
+            $this->proxyPost();
 
-			$this->proxyGet();
+        }else if($this->proxyMethod == "GET"){
 
-		}
+            $this->proxyGet();
 
-		$isUnauthorized = $this->isUnauthorized();
+        }
 
-		if($isUnauthorized === true) {
+        $isUnauthorized = $this->isUnauthorized();
 
-			if($this->attemptsCount < $this->allowedAttempts) {
+        if($isUnauthorized === true) {
 
-				$this->attemptsCount++;
+            if($this->attemptsCount < $this->allowedAttempts) {
 
-				$this->proxyLog->log("Retry attempt " . $this->attemptsCount . " of " . $this->allowedAttempts);
+                $this->attemptsCount++;
 
-				$token = $this->getNewTokenIfCredentialsAreSpecified();
+                $this->proxyLog->log("Retry attempt " . $this->attemptsCount . " of " . $this->allowedAttempts);
 
-				if(!empty($token) || $token != null) {
+                $token = $this->getNewTokenIfCredentialsAreSpecified();
 
-					$this->addTokenToSession($token);
+                if(!empty($token) || $token != null) {
 
-					$this->appendToken($token);
-				}
+                    $this->addTokenToSession($token);
 
-				if($this->attemptsCount == $this->allowedAttempts) {
+                    $this->appendToken($token);
+                }
 
-					$this->proxyLog->log("Removing session value");
+                if($this->attemptsCount == $this->allowedAttempts) {
 
-					$sessonKey = 'token_for_' . $this->sessionUrl;
+                    $this->proxyLog->log("Removing session value");
 
-					$sessonKey = sprintf("'%s'", $sessonKey);
+                    $sessonKey = 'token_for_' . $this->sessionUrl;
 
-					unset($_SESSION[$sessonKey]);  //Remove token from session
-				}
+                    $sessonKey = sprintf("'%s'", $sessonKey);
 
-				$this->runProxy();
-			}
+                    unset($_SESSION[$sessonKey]);  //Remove token from session
+                }
 
-		} else {
+                $this->runProxy();
+            }
 
-			$this->proxyLog->log("Ok to proxy");
-		}
+        } else {
 
-		return true;
-	}
+            $this->proxyLog->log("Ok to proxy");
+        }
 
-	public function isUnauthorized()
-	{
+        return true;
+    }
 
+    public function isUnauthorized()
+    {
 
-		$isUnauthorized = false;
+        $isUnauthorized = false;
 
-		$jsonData = json_decode($this->proxyBody);
+        $jsonData = json_decode($this->proxyBody);
 
-		if (strpos($this->proxyBody,'"code":499') !== false) {
+        if (strpos($this->proxyBody,'"code":499') !== false) {
 
-			$isUnauthorized = true;
+            $isUnauthorized = true;
 
-			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
+        }
 
-		}
+        if (strpos($this->proxyBody,'"code":498') !== false) {
 
-		if (strpos($this->proxyBody,'"code":498') !== false) {
+            $isUnauthorized = true;
 
-			$isUnauthorized = true;
+        }
 
-			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
+        $errorCode = $jsonData->{'error'}->{'code'};
 
-		}
+        if($errorCode == 499 || $errorCode == 498)
+        {
+            $isUnauthorized = true;
 
-		$errorCode = $jsonData->{'error'}->{'code'};
+        }
 
-		if($errorCode == 499 || $errorCode == 498)
-		{
-			$isUnauthorized = true;
+        if($isUnauthorized){
 
-			$this->proxyLog->log("Authorization failed : " . $this->proxyBody);
+            $this->proxyLog->log("Authorization failed : " . $this->proxyBody);
 
-		}
+        }
 
-		return $isUnauthorized;
-	}
+        return $isUnauthorized;
+    }
 
-	private function appendToken($token)
-	{
-		if($this->proxyMethod == 'POST' || $this->proxyMethod == 'FILES')
-		{
+    private function appendToken($token)
+    {
+        if($this->proxyMethod == 'POST' || $this->proxyMethod == 'FILES')
+        {
 
-			if(array_key_exists("token", $this->proxyData))
-			{
-				$this->proxyData["token"] = $token;
+            if(array_key_exists("token", $this->proxyData))
+            {
+                $this->proxyData["token"] = $token;
 
-			}else{
+            }else{
 
-				$appendedToken = array_merge($this->proxyData, array("token" => $token));
+                $appendedToken = array_merge($this->proxyData, array("token" => $token));
 
-				$this->proxyData = $appendedToken;
+                $this->proxyData = $appendedToken;
 
-			}
+            }
 
-		}else{
+        }else{
 
-			$pos = strripos($this->proxyUrlWithData, "&token=");
+            $pos = strripos($this->proxyUrlWithData, "&token=");
 
-			if($pos > 0)
-			{
+            if($pos > 0)
+            {
 
-				$this->proxyUrlWithData = substr($this->proxyUrlWithData,0,$pos) . "&token=" . $token; //Remove old tokens.
+                $this->proxyUrlWithData = substr($this->proxyUrlWithData,0,$pos) . "&token=" . $token; //Remove old tokens.
 
-			}else{
+            }else{
 
-				$this->proxyUrlWithData = $this->proxyUrlWithData . "&token=" . $token;
+                $this->proxyUrlWithData = $this->proxyUrlWithData . "&token=" . $token;
 
-			}
+            }
 
-		}
-	}
+        }
+    }
 
-	public function initCurl()
-	{
-		$headers = array('Expect:', 'Referer: ' . $this->referer);
+    public function initCurl()
+    {
+        $headers = array('Expect:', 'Referer: ' . $this->referer);
 
-		$this->ch = curl_init();
+        $this->ch = curl_init();
 
-		curl_setopt($this->ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($this->ch, CURLOPT_HTTPHEADER, $headers);
 
-		curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER , false);
+        curl_setopt($this->ch, CURLOPT_SSL_VERIFYPEER , false);
 
-		curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST , false);
+        curl_setopt($this->ch, CURLOPT_SSL_VERIFYHOST , false);
 
-		curl_setopt($this->ch, CURLOPT_HEADER, true);
+        curl_setopt($this->ch, CURLOPT_HEADER, true);
 
-	}
+    }
 
 
 
-	public function proxyGet() {
+    public function proxyGet() {
 
-		$this->response = null;
+        $this->response = null;
 
-		try {
+        try {
 
-			$this->initCurl();
+            $this->initCurl();
 
-			curl_setopt($this->ch, CURLOPT_HTTPGET, true);
+            curl_setopt($this->ch, CURLOPT_HTTPGET, true);
 
-			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
-			curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrlWithData);
+            curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrlWithData);
 
-			$this->response = curl_exec($this->ch);
+            $this->response = curl_exec($this->ch);
 
-			if(curl_errno($this->ch) > 0 || empty($this->response))
-			{
-				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+            if(curl_errno($this->ch) > 0 || empty($this->response))
+            {
+                $this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
 
-			}else{
+            }else{
 
-				$this->setProxyHeaders();
+                $this->setProxyHeaders();
 
-				$this->setResponseBody();
+                $this->setResponseBody();
 
-			}
+            }
 
-			curl_close($this->ch);
+            curl_close($this->ch);
 
-			$this->ch = null;
+            $this->ch = null;
 
 
-		} catch (Exception $e) {
+        } catch (Exception $e) {
 
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log($e->getMessage());
+        }
 
-		return;
-	}
+        return;
+    }
 
-	public function proxyPost($url, $params)
-	{
-		$this->response = null;
+    public function proxyPost($url, $params)
+    {
+        $this->response = null;
 
-		$this->headers = null;
+        $this->headers = null;
 
-		$this->proxyBody = null;
+        $this->proxyBody = null;
 
-		if(empty($url) || $url == null || empty($params) || $url == $params){ //If no $url or $params passed, defaut to class property values
+        if(empty($url) || $url == null || empty($params) || $url == $params){ //If no $url or $params passed, defaut to class property values
 
-			$url = $this->proxyUrl;
+            $url = $this->proxyUrl;
 
-			$params = $this->proxyData;
+            $params = $this->proxyData;
 
-		}
+        }
 
-		if(is_array($params)){ //If $params is array, convert it to a curl query string like 'image=png&f=json'
+        if(is_array($params)){ //If $params is array, convert it to a curl query string like 'image=png&f=json'
 
-			$params = $this->build_http_query($params);
-		}
+            $params = $this->build_http_query($params);
+        }
 
-		try {
+        try {
 
-			$this->initCurl();
+            $this->initCurl();
 
-			curl_setopt($this->ch, CURLOPT_URL, $url);
+            curl_setopt($this->ch, CURLOPT_URL, $url);
 
-			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
-			curl_setopt($this->ch, CURLOPT_POST, true);
+            curl_setopt($this->ch, CURLOPT_POST, true);
 
-			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $params);
+            curl_setopt($this->ch, CURLOPT_POSTFIELDS, $params);
 
-			$this->response = curl_exec($this->ch);
+            $this->response = curl_exec($this->ch);
 
-		} catch (Exception $e) {
+        } catch (Exception $e) {
 
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log($e->getMessage());
+        }
 
-		if(curl_errno($this->ch) > 0 || empty($this->response))
-		{
-			$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+        if(curl_errno($this->ch) > 0 || empty($this->response))
+        {
+            $this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
 
-		}else{
+        }else{
 
-			$this->setProxyHeaders();
+            $this->setProxyHeaders();
 
-			$this->setResponseBody();
-		}
+            $this->setResponseBody();
+        }
 
-		curl_close($this->ch);
+        curl_close($this->ch);
 
-		$this->ch = null;
+        $this->ch = null;
 
-		return;
-	}
+        return;
+    }
 
-	public function proxyFiles()
-	{
-		try {
+    public function proxyFiles()
+    {
+        try {
 
-			if (count($this->proxyData))
-			{
-				$query_array = array();
+            if (count($this->proxyData))
+            {
+                $query_array = array();
 
-				foreach ($this->proxyData as $pkey => $pvalue)
-				{
-					$query_array[$pkey] = $pvalue;
+                foreach ($this->proxyData as $pkey => $pvalue)
+                {
+                    $query_array[$pkey] = $pvalue;
 
-					foreach ($_FILES as $key => $file)
-					{
-						$parts = pathinfo($file["tmp_name"]);
+                    foreach ($_FILES as $key => $file)
+                    {
+                        $parts = pathinfo($file["tmp_name"]);
 
-						$this->unlinkPath = $parts["dirname"] . DIRECTORY_SEPARATOR . $file["name"];
+                        $this->unlinkPath = $parts["dirname"] . DIRECTORY_SEPARATOR . $file["name"];
 
-						rename($file["tmp_name"], $this->unlinkPath);
+                        rename($file["tmp_name"], $this->unlinkPath);
 
-						$this->proxyData[$key] = "@" . $this->unlinkPath;
+                        $this->proxyData[$key] = "@" . $this->unlinkPath;
 
-						$query_array[$key] = "@" . $this->unlinkPath;
+                        $query_array[$key] = "@" . $this->unlinkPath;
 
-					}
+                    }
 
-				}
+                }
 
-			}
+            }
 
-			$this->initCurl();
+            $this->initCurl();
 
-			curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrl);
+            curl_setopt($this->ch, CURLOPT_URL, $this->proxyUrl);
 
-			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
-			curl_setopt($this->ch, CURLOPT_POST, true);
+            curl_setopt($this->ch, CURLOPT_POST, true);
 
-			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $query_array);
+            curl_setopt($this->ch, CURLOPT_POSTFIELDS, $query_array);
 
-			$this->response = curl_exec($this->ch);
+            $this->response = curl_exec($this->ch);
 
-			if(curl_errno($this->ch) > 0 || empty($this->response))
-			{
-				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
-			}else{
+            if(curl_errno($this->ch) > 0 || empty($this->response))
+            {
+                $this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+            }else{
 
-				$this->setProxyHeaders();
+                $this->setProxyHeaders();
 
-				$this->setResponseBody();
+                $this->setResponseBody();
 
-				if($this->isUnauthorized() == true) {
+                if($this->isUnauthorized() == true) {
 
-					$this->proxyLog->log("Unlinking: " . $this->unlinkPath);
+                    $this->proxyLog->log("Unlinking: " . $this->unlinkPath);
 
-					unlink($this->unlinkPath);
+                    unlink($this->unlinkPath);
 
-				}
+                }
 
-			}
+            }
 
-			curl_close($this->ch);
+            curl_close($this->ch);
 
-			$this->ch = null;
+            $this->ch = null;
 
-			return;
+            return;
 
-		} catch (Exception $e) {
+        } catch (Exception $e) {
 
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function build_http_query($query)
-	{
-		$query_array = array();
+    public function build_http_query($query) //Support for older PHP versions here
+    {
+        $query_array = array();
 
-	    foreach($query as $key => $value ){
+        foreach($query as $key => $value ){
 
-	        $query_array[] = $key . '=' . $value;
+            $query_array[] = $key . '=' . $value;
 
-	    }
+        }
 
-    	return implode( '&', $query_array);
+        return implode( '&', $query_array);
 
-	}
+    }
 
-	function startsWith($requested, $needed)
-	{
+    function startsWith($requested, $needed)
+    {
 
-		return stripos($requested, $needed) === 0;
+        return stripos($requested, $needed) === 0;
 
-	}
+    }
 
-	function contains($haystack, $needle)
-	{
+    function contains($haystack, $needle)
+    {
 
-		return stripos($haystack, $needle) !== false ? true : false;
+        return stripos($haystack, $needle) !== false ? true : false;
 
-	}
+    }
 
-	function equals($string, $anotherstring)
-	{
+    function equals($string, $anotherstring)
+    {
 
-		return $string == $anotherstring;
+        return $string == $anotherstring;
 
-	}
+    }
 
 
-	public function isUserLogin()
-	{
+    public function isUserLogin()
+    {
 
-		if (isset($this->resource['username']) && isset($this->resource['password'])) {
+        if (isset($this->resource['username']) && isset($this->resource['password'])) {
 
-			return true;
-		}
+            return true;
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	public function isAppLogin()
-	{
+    public function isAppLogin()
+    {
 
-		if (isset ( $this->resource['clientid']) && isset ($this->resource['clientsecret'])) {
+        if (isset ( $this->resource['clientid']) && isset ($this->resource['clientsecret'])) {
 
-			return true;
+            return true;
 
-		}
+        }
 
-		return false;
-	}
+        return false;
+    }
 
-	public function exchangePortalTokenForServerToken($portalToken, $su) {
+    public function exchangePortalTokenForServerToken($portalToken) {
 
-		$pos = strripos($this->resource['oauth2endpoint'], "/oauth2");
+        $this->proxyLog->log("Exchanging portal token for server-specific token for " . $this->resource['url']);
 
-		$exchangeUri = substr($this->resource['oauth2endpoint'],0,$pos) . "/generateToken";
+        $pos = strripos($this->resource['oauth2endpoint'], "/oauth2");
 
-		$this->proxyPost($exchangeUri, array(
-				'token' => $portalToken,
-				'serverURL' => $this->proxyUrl,
-				'f' => 'json'
-		));
+        $exchangeUri = substr($this->resource['oauth2endpoint'],0,$pos) . "/generateToken";
 
-		$tokenResponse = json_decode($this->proxyBody, true);
+        $this->proxyPost($exchangeUri, array(
+                'token' => $portalToken,
+                'serverURL' => $this->resource['url'],
+                'f' => 'json'
+        ));
 
-		$token = $tokenResponse['token'];
+        $tokenResponse = json_decode($this->proxyBody, true);
 
-		return $token;
+        $token = $tokenResponse['token'];
 
+        return $token;
 
-	}
 
-	function getNewTokenIfCredentialsAreSpecified() {
+    }
 
-		$this->sessionUrl = $this->resource['url']; //Store url in local variable b/ later we may tweak url
+    function getNewTokenIfCredentialsAreSpecified() {
 
-		$token = null;
+        $this->sessionUrl = $this->resource['url']; //Store url in local variable b/ later we may tweak url
 
-		$isUserLogin = $this->isUserLogin();
+        $token = null;
 
-		$isAppLogin = $this->isAppLogin();
+        $isUserLogin = $this->isUserLogin();
 
-		if ($isUserLogin || $isAppLogin) {
+        $isAppLogin = $this->isAppLogin();
 
-			if ($isAppLogin) {
+        if ($isUserLogin || $isAppLogin) {
 
-				$token = $this->doAppLogin();
+            if ($isAppLogin) {
 
-			} else if($isUserLogin) {
+                $token = $this->doAppLogin();
 
-				$token = $this->doUserPasswordLogin();
+            } else if($isUserLogin) {
 
-				$this->proxyLog->log("Using a 60 minute token");
-			}
+                $token = $this->doUserPasswordLogin();
+            }
 
-		}else{
+        }else{
 
-			$this->proxyLog->log("Failed getting new token");
-		}
+            $this->proxyLog->log("Can not determine if OAuth or ArcGIS Server means of authentication.  Check config for errors.");
+        }
 
-		return $token;
-	}
+        return $token;
+    }
 
 
-	 public function addTokenToSession($token) {
+     public function addTokenToSession($token) {
 
-	 	$sessonKey = 'token_for_' . $this->sessionUrl;
+        $sessonKey = 'token_for_' . $this->sessionUrl;
 
-	 	$sessonKey = sprintf("'%s'", $sessonKey);
+        $sessonKey = sprintf("'%s'", $sessonKey);
 
-	 	try {
+        try {
 
-			$this->proxyLog->log('Adding token to session');
+            $this->proxyLog->log('Adding token to session');
 
-			$_SESSION[$sessonKey] = $token;
+            $_SESSION[$sessonKey] = $token;
 
-		}catch(Exception $e){
+        }catch(Exception $e){
 
-			$this->proxyLog->log("Error setting session: " . $e);
-		}
+            $this->proxyLog->log("Error setting session: " . $e);
+        }
 
-	 }
+     }
 
 
-	public function doUserPasswordLogin() {
+    public function doUserPasswordLogin() {
 
-		$this->proxyLog->log("Resource using ArcGIS Server security");
+        $this->proxyLog->log("Resource using ArcGIS Server security");
 
-		$infoUrl = $this->formatResourceUrl();
+        $tokenServiceUri = $this->getTokenEndpoint();
 
-		if (!empty($infoUrl)) {
+        $this->proxyPost($tokenServiceUri, array (
+                'request' => 'getToken',
+                'f' => 'json',
+                'referer' => $this->referer,
+                'expiration' => 60,
+                'username' => $this->resource['username'],
+                'password' => $this->resource['password']
+        ));
 
-			$this->proxyPost($infoUrl,array('f' => 'json'));
+        $tokenResponse = json_decode($this->proxyBody, true);
 
-			$infoResponse = json_decode($this->proxyBody, true);
+        $token = $tokenResponse['token'];
 
-			$tokenServiceUri = $infoResponse['authInfo']['tokenServicesUrl'];
+        return $token;
+    }
 
-			$this->proxyLog->log("Got token enpoint");
+    public function getTokenEndpoint()
+    {
+        $position = strripos($this->resource['url'], "/rest");
 
-			if (!empty($tokenServiceUri)) {
+        if($position){
 
-				$this->proxyPost($tokenServiceUri, array (
-						'request' => 'getToken',
-						'f' => 'json',
-						'referer' => $this->referer,
-						'expiration' => 60,
-						'username' => $this->resource['username'],
-						'password' => $this->resource['password']
-				));
+            $infoUrl = substr($this->resource['url'],0,$position) . "/rest/info";
 
-				$tokenResponse = json_decode($this->proxyBody, true);
+        }else{
 
-				$token = $tokenResponse['token'];
+            $infoUrl = $this->resource['url'] . "/arcgis/rest/info";
+        }
 
-			}else {
+        $this->proxyPost($infoUrl,array('f' => 'json'));
 
-				$this->proxyLog->log("Unable to determine token endpoint from " . $infoUrl);
-			}
-		} else {
+        $infoResponse = json_decode($this->proxyBody, true);
 
-			$this->proxyLog->log("Unable to determine /rest/info endpoint.");
+        $tokenServiceUri = $infoResponse['authInfo']['tokenServicesUrl'];
 
-		}
-		return $token;
-	}
+        if(!empty($tokenServiceUri)) {
 
-	public function formatResourceUrl() {
+            $this->proxyLog->log("Got token endpoint");
 
-		if (substr($this->resource['url'], -4) == '.com' ||
-		substr($this->resource['url'], -4) == '.org' ||
-		substr($this->resource['url'], -4) == '.gov'||
-		substr($this->resource['url'], -4) == '.net') //Help folks who use the domain name ie. https://route.arcgis.com
-		{
-			if (substr($this->resource['url'], -1) != '/')
-			{
-				$this->resource['url'] = $this->resource['url'] . "/arcgis/rest";
+        }else{
 
-			}else{
+            $this->proxyLog->log("Unable to get token endpoint");
+        }
 
-				$this->resource['url'] = $this->resource['url'] . "arcgis/rest";
-			}
-		}
+        return $tokenServiceUri;
+    }
 
-		$pos = strripos($this->resource['url'], "/rest");
 
-		$infoUrl = substr($this->resource['url'],0,$pos) . "/rest/info";
 
-		return $infoUrl;
-	}
+    public function doAppLogin()
+    {
+        $this->resource['oauth2endpoint'] = isset($this->resource['oauth2endpoint']) ? $this->resource['oauth2endpoint'] : "https://arcgis.com/sharing/oauth2/";
 
+        if (substr($this->resource['oauth2endpoint'], -1) != '/')
+        {
+            $this->resource['oauth2endpoint'] = $this->resource['oauth2endpoint'] . "/";
+        }
 
+        $this->proxyLog->log("Resource using OAuth");
 
-	public function doAppLogin()
-	{
+        $this->proxyPost($this->resource['oauth2endpoint'] . "token", array(
+                'client_id' => $this->resource['clientid'],
+                'client_secret' => $this->resource['clientsecret'],
+                'grant_type' => 'client_credentials',
+                'f' => 'json'
+        ));
 
-		$pos = strripos($this->resource['oauth2endpoint'], "/oauth2");
+        $tokenResponse = json_decode($this->proxyBody, true);
 
-		$this->resource['oauth2endpoint'] = isset($this->resource['oauth2endpoint']) ? $this->resource['oauth2endpoint'] : "https://arcgis.com/sharing/oauth2/";
+        $token = $tokenResponse['access_token'];
 
-		if (substr($this->resource['oauth2endpoint'], -1) != '/')
-		{
-			$this->resource['oauth2endpoint'] = $this->resource['oauth2endpoint'] . "/";
-		}
+        if (!empty($token))
+        {
+            $token = $this->exchangePortalTokenForServerToken($token);
+        }
 
-		$this->proxyLog->log("Resource using OAuth");
+        return $token;
+    }
 
-		$this->proxyPost($this->resource['oauth2endpoint'] . "token", array(
-				'client_id' => $this->resource['clientid'],
-				'client_secret' => $this->resource['clientsecret'],
-				'grant_type' => 'client_credentials',
-				'f' => 'json'
-		));
 
-		$tokenResponse = json_decode($this->proxyBody, true);
+    public function isAllowedApplication()
+    {
 
-		$token = $tokenResponse['access_token'];
+        if(in_array("*",$this->proxyConfig['allowedreferers'])){
 
-		if (!empty($token) || $token != null )
-		{
-			$token = $this->exchangePortalTokenForServerToken($token, $this->resource['url']);
-		}
+            $this->referer = $_SERVER['SERVER_NAME']; //This is to enable browser testing when * is used
 
-		return $token;
-	}
+            $isAllowedApplication = true;
 
-	public function getToken($url, $params)
-	{
-		$this->response = null;
+            return $isAllowedApplication;
 
-		$query = $this->build_http_query($params);
+        }else{
 
-		try {
+            $this->referer = $_SERVER['HTTP_REFERER'];
 
-			$this->initCurl();
+        }
 
-			curl_setopt($this->ch, CURLOPT_URL, $url);
+        $isAllowedApplication = false;
 
-			curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
+        $domain = substr($_SERVER['HTTP_REFERER'], strpos($this->referer, '://') + 3);
 
-			curl_setopt($this->ch, CURLOPT_POST, true);
+        $domain = substr($domain, 0, strpos($domain, '/'));
 
-			curl_setopt($this->ch, CURLOPT_POSTFIELDS, $query);
+        if (in_array($domain, $this->proxyConfig['allowedreferers'])) {
 
-			$this->response = curl_exec($this->ch);
+            $isAllowedApplication = true;
 
-			if(curl_errno($this->ch) > 0 || empty($this->response))
-			{
-				$this->proxyLog->log("Curl error or no response: " . curl_error($this->ch));
+        }else{
 
-			}else{
+            $this->proxyLog->log("Attempt made to use this proxy from " . $this->referer . " and " . $_SERVER['REMOTE_ADDR']);
 
-				//$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
+        }
 
-				//$this->proxyBody = substr($this->response, $header_size);
+        return $isAllowedApplication;
 
+    }
 
-				$header_size = curl_getinfo($this->ch,CURLINFO_HEADER_SIZE);
+    function __destruct()
+    {
 
-				$token = substr($this->response, $header_size);
-
-				$this->proxyLog->log("TOKEN IS:  " . $token);
-			}
-
-		} catch (Exception $e) {
-
-			$this->proxyLog->log($e->getMessage());
-		}
-
-		curl_close($this->ch);
-
-		return $token;
-
-	}
-
-	public function isAllowedApplication()
-	{
-
-		if(in_array("*",$this->proxyConfig['allowedreferers'])){
-
-			$this->referer = $_SERVER['SERVER_NAME']; //This is to enable browser testing when * is used
-
-			$isAllowedApplication = true;
-
-			return $isAllowedApplication;
-
-		}else{
-
-			$this->referer = $_SERVER['HTTP_REFERER'];
-
-		}
-
-		$isAllowedApplication = false;
-
-		$domain = substr($_SERVER['HTTP_REFERER'], strpos($this->referer, '://') + 3);
-
-		$domain = substr($domain, 0, strpos($domain, '/'));
-
-		if (in_array($domain, $this->proxyConfig['allowedreferers'])) {
-
-			$isAllowedApplication = true;
-
-		}else{
-
-			$this->proxyLog->log("Attempt made to use this proxy from " . $this->referer . " and " . $_SERVER['REMOTE_ADDR']);
-
-		}
-
-		return $isAllowedApplication;
-
-	}
-
-	function __destruct()
-	{
-
-	}
+    }
 }
 
 
@@ -1249,1114 +1195,1120 @@ class Proxy {
 
 class ProxyLog {
 
-	public $timeFormat = 'm-d-y H:i:s';
+    public $timeFormat = 'm-d-y H:i:s';
 
-	public $seperator = ' | ';
+    public $seperator = ' | ';
 
-	public $eol = "\r\n";
+    public $eol = "\r\n";
 
-	public $indent = " ";
+    public $indent = " ";
 
-	public $proxyConfig;
+    public $proxyConfig;
 
 
-	public function __construct($configuration = null) {
+    public function __construct($configuration = null) {
 
-		if($configuration != null){
+        if($configuration != null){
 
-			$this->proxyConfig = $configuration->proxyConfig;
+            $this->proxyConfig = $configuration->proxyConfig;
 
-			$this->addLogLevel();
+            $this->addLogLevel();
 
-			if($this->proxyConfig['loglevel'] != 3){
+            if($this->proxyConfig['loglevel'] != 3){
 
-				$this->attemptWriteToLog();
-			}
+                $this->attemptWriteToLog();
+            }
 
-		}else{
+        }else{
 
-			throw new Exception ('Problem creating log.');
-		}
+            throw new Exception ('Problem creating log.');
+        }
 
-	}
+    }
 
-	 private function addLogLevel()
-	 {
+     private function addLogLevel()
+     {
 
-	 	if(empty($this->proxyConfig['logfile'])) {
+        if(empty($this->proxyConfig['logfile'])) {
 
-	 		$this->proxyConfig['logfile'] = null;
+            $this->proxyConfig['logfile'] = null;
 
-	 		$this->proxyConfig['loglevel'] = 3; //Turns off logging
-	 	}
+            $this->proxyConfig['loglevel'] = 3; //Turns off logging
+        }
 
-	 	if(!empty($this->proxyConfig['logfile']) && empty($this->proxyConfig['loglevel'])) {
+        if(!empty($this->proxyConfig['logfile']) && empty($this->proxyConfig['loglevel'])) {
 
-	 		$this->proxyConfig['loglevel'] = 0; //Turns on logging
+            $this->proxyConfig['loglevel'] = 0; //Turns on logging
 
-	 	}
+        }
 
-	 }
+     }
 
 
-	public function write($m)
-	{
+    public function write($m)
+    {
 
-		if (isset($this->proxyConfig['logfile'])) {
+        if (isset($this->proxyConfig['logfile'])) {
 
-			try {
+            try {
 
-				$fh = null;
+                $fh = null;
 
-				$fh = fopen($this->proxyConfig['logfile'], (file_exists($this->proxyConfig['logfile'])) ? 'a' : 'w');
+                $fh = fopen($this->proxyConfig['logfile'], (file_exists($this->proxyConfig['logfile'])) ? 'a' : 'w');
 
-				if (is_writable($this->proxyConfig['logfile'])) {
+                if (is_writable($this->proxyConfig['logfile'])) {
 
-					fwrite($fh, $this->eol);
+                    fwrite($fh, $this->eol);
 
-					fwrite($fh, $this->getTime());
+                    fwrite($fh, $this->getTime());
 
-					//fwrite($fh, $this->seperator);
+                    //fwrite($fh, $this->seperator);
 
-					//fwrite($fh, $_SERVER['HTTP_REFERER']);
+                    //fwrite($fh, $_SERVER['HTTP_REFERER']);
 
-					fwrite($fh, $this->seperator);
+                    fwrite($fh, $this->seperator);
 
-					fwrite($fh, $m);
+                    fwrite($fh, $m);
 
-				}else{
+                }else{
 
-					header('Status: 200', true, 200);
+                    header('Status: 200', true, 200);
 
-					header('Content-Type: application/json');
+                    header('Content-Type: application/json');
 
-					$configError = array(
-							"error" => array("code" => 412,
-									"details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
-									"message" => "Proxy failed due to configuration error."
-							));
+                    $configError = array(
+                            "error" => array("code" => 412,
+                                    "details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
+                                    "message" => "Proxy failed due to configuration error."
+                            ));
 
-					echo json_encode($configError);
+                    echo json_encode($configError);
 
-					exit();
+                    exit();
 
-				}
+                }
 
-				fclose($fh);
+                fclose($fh);
 
-			} catch (Exception $e) {
+            } catch (Exception $e) {
 
-				$this->log($e->getMessage());
+                $this->log($e->getMessage());
 
-			}
-		} else {
+            }
+        } else {
 
-			header('Status: 200', true, 200);
+            header('Status: 200', true, 200);
 
-			header('Content-Type: application/json');
+            header('Content-Type: application/json');
 
-			$configError = array(
-					"error" => array("code" => 412,
-							"details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
-							"message" => "Proxy failed due to configuration error."
-					));
+            $configError = array(
+                    "error" => array("code" => 412,
+                            "details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
+                            "message" => "Proxy failed due to configuration error."
+                    ));
 
-			echo json_encode($configError);
+            echo json_encode($configError);
 
-			exit();
+            exit();
 
-		}
-	}
+        }
+    }
 
-	public function attemptWriteToLog()
-	{
+    public function attemptWriteToLog()
+    {
 
-		if ($this->proxyConfig['loglevel'] == 0 || $this->proxyConfig['loglevel'] == 2) {
+        if ($this->proxyConfig['loglevel'] == 0 || $this->proxyConfig['loglevel'] == 2) {
 
-			if (isset($this->proxyConfig['logfile'])) {
+            if (isset($this->proxyConfig['logfile'])) {
 
-				try {
+                try {
 
-					$fh = null;
+                    $fh = null;
 
-					$fh = fopen($this->proxyConfig['logfile'], (file_exists($this->proxyConfig['logfile'])) ? 'a' : 'w');
+                    $fh = fopen($this->proxyConfig['logfile'], (file_exists($this->proxyConfig['logfile'])) ? 'a' : 'w');
 
-					if (is_writable($this->proxyConfig['logfile'])) {
+                    if (is_writable($this->proxyConfig['logfile'])) {
 
-						fwrite($fh, $this->eol);
+                        fwrite($fh, $this->eol);
 
-						fwrite($fh, ' ');
+                        fwrite($fh, ' ');
 
-					}else{
+                    }else{
 
-						header('Status: 200', true, 200);
+                        header('Status: 200', true, 200);
 
-						header('Content-Type: application/json');
+                        header('Content-Type: application/json');
 
-						$configError = array(
-								"error" => array("code" => 412,
-										"details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
-										"message" => "Proxy failed due to configuration error."
-								));
+                        $configError = array(
+                                "error" => array("code" => 412,
+                                        "details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
+                                        "message" => "Proxy failed due to configuration error."
+                                ));
 
-						echo json_encode($configError);
+                        echo json_encode($configError);
 
-						exit();
+                        exit();
 
-					}
+                    }
 
-					fclose($fh);
+                    fclose($fh);
 
-				} catch (Exception $e) {
+                } catch (Exception $e) {
 
-					header('Status: 200', true, 200);
+                    header('Status: 200', true, 200);
 
-					header('Content-Type: application/json');
+                    header('Content-Type: application/json');
 
-					$configError = array(
-							"error" => array("code" => 412,
-									"details" => array("Could not write to log.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
-									"message" => "Proxy failed due to configuration error."
-							));
+                    $configError = array(
+                            "error" => array("code" => 412,
+                                    "details" => array("Could not write to log.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
+                                    "message" => "Proxy failed due to configuration error."
+                            ));
 
-					echo json_encode($configError);
+                    echo json_encode($configError);
 
-					exit();
+                    exit();
 
-				}
-			} else {
+                }
+            } else {
 
-				header('Status: 200', true, 200);
+                header('Status: 200', true, 200);
 
-				header('Content-Type: application/json');
+                header('Content-Type: application/json');
 
-				$configError = array(
-						"error" => array("code" => 412,
-								"details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
-								"message" => "Proxy failed due to configuration error."
-						));
+                $configError = array(
+                        "error" => array("code" => 412,
+                                "details" => array("Detected malformed 'logFile' in configuration.  Make sure this app has write permissions to specified log file in configuration.  The server does not meet one of the preconditions that the requester put on the request."),
+                                "message" => "Proxy failed due to configuration error."
+                        ));
 
-				echo json_encode($configError);
+                echo json_encode($configError);
 
-				exit();
+                exit();
 
-			}
+            }
 
-		}
+        }
 
-	}
+    }
 
 
-	public function log($message)
-	{
+    public function log($message)
+    {
 
-		if ($this->proxyConfig['loglevel'] == 0) {
+        if ($this->proxyConfig['loglevel'] == 0) {
 
-			$this->write($message); //Writes messages and errors to logs
+            $this->write($message); //Writes messages and errors to logs
 
-		} elseif ($this->proxyConfig['loglevel'] == 1) {
+        } elseif ($this->proxyConfig['loglevel'] == 1) {
 
-			echo $message; //Show proxy errors and messages in browser console (should only be used when looking for errors)
+            echo $message; //Show proxy errors and messages in browser console (should only be used when looking for errors)
 
-		} elseif ($this->proxyConfig['loglevel'] == 2) {
+        } elseif ($this->proxyConfig['loglevel'] == 2) {
 
-			$this->write($message);  //Writes messages and errors to logs
+            $this->write($message);  //Writes messages and errors to logs
 
-			echo $message; //Show proxy errors and messages in browser console (should only be used when looking for errors)
+            echo $message; //Show proxy errors and messages in browser console (should only be used when looking for errors)
 
-		} elseif ($this->proxyConfig['loglevel'] == 3) {
+        } elseif ($this->proxyConfig['loglevel'] == 3) {
 
-			return; //No logging
-		}
+            return; //No logging
+        }
 
-	}
+    }
 
-	public function getTime() {
+    public function getTime() {
 
-		return date($this->timeFormat);
-	}
+        return date($this->timeFormat);
+    }
 
-	function __destruct()
-	{
+    function __destruct()
+    {
 
-	}
+    }
 
 }
 
 class RateMeter
 {
-	/**
-	 * Holds cleanup threshold value
-	 *
-	 * @var string
-	 * @access public
-	 */
-
-	const CLEAN_RATEMAP_AFTER = 10000;
-
-	/**
-	 * Holds proxy log
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $proxyLog;
-
-	/**
-	 * Holds serverurl property
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $serverUrl;
-
-	/**
-	 * Ip property
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $ip;
-
-	/**
-	 * Time property
-	 *
-	 * @var string
-	 * @access public
-	 */
-
-	public $time;
-
-	/**
-	 * Stores microtime as property allowing for fractional seconds
-	 *
-	 * @var string
-	 * @access public
-	 */
-
-	public $microtime;
-
-	/**
-	 * Sqlite database name property
-	 *
-	 * @var string
-	 * @access public
-	 */
-	public $dbname;
-
-	/**
-	 * Sqlite connection property
-	 *
-	 * @var PDO
-	 * @access public
-	 */
-	public $con;
-
-	/**
-	 * Under meter cap property
-	 *
-	 * @var bool
-	 * @access public
-	 */
-	public $underMeterCap;
+    /**
+     * Holds cleanup threshold value
+     *
+     * @var string
+     * @access public
+     */
+
+    const CLEAN_RATEMAP_AFTER = 10000;
+
+    /**
+     * Holds proxy log
+     *
+     * @var string
+     * @access public
+     */
+    public $proxyLog;
+
+    /**
+     * Holds serverurl property
+     *
+     * @var string
+     * @access public
+     */
+    public $serverUrl;
+
+    /**
+     * Ip property
+     *
+     * @var string
+     * @access public
+     */
+    public $ip;
+
+    /**
+     * Time property
+     *
+     * @var string
+     * @access public
+     */
+
+    public $time;
+
+    /**
+     * Stores microtime as property allowing for fractional seconds
+     *
+     * @var string
+     * @access public
+     */
+
+    public $microtime;
+
+    /**
+     * Sqlite database name property
+     *
+     * @var string
+     * @access public
+     */
+    public $dbname;
+
+    /**
+     * Sqlite connection property
+     *
+     * @var PDO
+     * @access public
+     */
+    public $con;
+
+    /**
+     * Under meter cap property
+     *
+     * @var bool
+     * @access public
+     */
+    public $underMeterCap;
+
+
+    /**
+     * Meter cap property
+     *
+     * @var int
+     * @access public
+     */
 
+    public $countCap;
 
-	/**
-	 * Meter cap property
-	 *
-	 * @var int
-	 * @access public
-	 */
+    /**
+     * Meter rate property
+     *
+     * @var int
+     * @access public
+     */
+    public $rate;
 
-	public $countCap;
+    /**
+     * Holds the rate meter count value
+     *
+     * @var int
+     * @access public
+     */
+    public $count = 0;
 
-	/**
-	 * Meter rate property
-	 *
-	 * @var int
-	 * @access public
-	 */
-	public $rate;
+    /**
+     * Holds rate meter period found in config
+     *
+     * @var int
+     * @access public
+     */
 
-	/**
-	 * Holds the rate meter count value
-	 *
-	 * @var int
-	 * @access public
-	 */
-	public $count = 0;
+    public $ratelimitperiod;
 
-	/**
-	 * Holds rate meter period found in config
-	 *
-	 * @var int
-	 * @access public
-	 */
+    /**
+     * Holds current resource being proxied
+     *
+     * @var string
+     */
 
-	public $ratelimitperiod;
+    public $resourceUrl;
 
 
 
-	public function __construct ($url, $ratelimit, $ratelimitperiod, $log) {
+    public function __construct ($url, $ratelimit, $ratelimitperiod, $log) {
 
-		$this->proxyLog = $log;
+        $this->proxyLog = $log;
 
-		$this->resourceUrl = $url;
+        $this->resourceUrl = $url;
 
-		$this->ratelimitperiod = $ratelimitperiod;
+        $this->ratelimitperiod = $ratelimitperiod;
 
-		$this->countCap = $ratelimit;
+        $this->countCap = $ratelimit;
 
-		$this->rate = $ratelimit / $ratelimitperiod / 60;  //ratelimitperiod is designed to be in seconds
+        $this->rate = $ratelimit / $ratelimitperiod / 60;  //ratelimitperiod is designed to be in seconds
 
-		$this->ip = $_SERVER['REMOTE_ADDR'];
+        $this->ip = $_SERVER['REMOTE_ADDR'];
 
-		$this->dbname = 'proxy.sqlite'; // This string may need to come config
+        $this->dbname = 'proxy.sqlite'; // This string may need to come config
 
-		$this->getRateMeterDatabase();
+        $this->getRateMeterDatabase();
 
-	}
+    }
 
-	public function getConnection()
-	{
-		if($this->con != null)
-		{
-			return $this->con;
+    public function getConnection()
+    {
+        if($this->con != null)
+        {
+            return $this->con;
 
-		}else{
+        }else{
 
-			$this->proxyLog->log('Cannot get a connection');
+            $this->proxyLog->log('Cannot get a connection');
 
-			header('Status: 200', true, 200);
+            header('Status: 200', true, 200);
 
-			header('Content-Type: application/json');
+            header('Content-Type: application/json');
 
-			$serverError = array(
-					"error" => array("code" => 500,
-							"details" => array("Cannot make a Sqlite database connection.  Check to see if it exists.  If it does, consider backing up and then deleting sqlite database."),
-							"message" => "Proxy failed could not connect to sqlite database."
-					));
+            $serverError = array(
+                    "error" => array("code" => 500,
+                            "details" => array("Cannot make a Sqlite database connection.  Check to see if it exists.  If it does, consider backing up and then deleting sqlite database."),
+                            "message" => "Proxy failed could not connect to sqlite database."
+                    ));
 
-			echo json_encode($serverError);
+            echo json_encode($serverError);
 
-			exit();
-		}
-	}
+            exit();
+        }
+    }
 
-	public function getRateMeterDatabase()
-	{
-		try {
+    public function getRateMeterDatabase()
+    {
+        try {
 
-			if(file_exists($this->dbname))
-			{
-				$db = new PDO("sqlite:" . $this->dbname);
+            if(file_exists($this->dbname))
+            {
+                $db = new PDO("sqlite:" . $this->dbname);
 
-				$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-				$this->con = $db;
+                $this->con = $db;
 
-				return;
-			}
+                return;
+            }
 
-		}
-		catch(ErrorException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
+        }
+        catch(ErrorException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
 
-			return null;
-		}
+            return null;
+        }
 
-		try {
+        try {
 
-			$db = new PDO("sqlite:" . $this->dbname);
+            $db = new PDO("sqlite:" . $this->dbname);
 
-			$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-			chmod($this->dbname,0777);
+            chmod($this->dbname,0777);
 
-			if($db != null)
-			{
-				$db->beginTransaction();
+            if($db != null)
+            {
+                $db->beginTransaction();
 
-				$this->createResourceIpTable($db);
+                $this->createResourceIpTable($db);
 
-				$this->createClicksTable($db);
+                $this->createClicksTable($db);
 
-				$this->proxyLog->log("ABOUT TO INSERT CLICK");
+                $this->insertClickRecord($db);
 
-				$this->insertClickRecord($db);
+                $db->commit();
 
-				$db->commit();
+                $this->con = $db;
 
-				$this->con = $db;
+            }
 
-			}
+            return;
 
-			return;
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
+            return null;
+        }
+    }
 
-			return null;
-		}
-	}
+    public function insertClickRecord($db)
+    {
 
-	public function insertClickRecord($db)
-	{
+        try {
 
-		try {
-			$this->proxyLog->log("INSERTING CLICK");
 
-			$sql = "INSERT INTO clicks (id, total) VALUES (:id,:total)";
+            $sql = "INSERT INTO clicks (id, total) VALUES (:id,:total)";
 
-			$q = $db->prepare($sql);
+            $q = $db->prepare($sql);
 
-			$q->bindValue(':id', null);
+            $q->bindValue(':id', null);
 
-			$q->bindValue(':total', 1);
+            $q->bindValue(':total', 1);
 
-			$q->execute() or die($this->getDatabaseErrorMessage());
+            $q->execute() or die($this->getDatabaseErrorMessage());
 
-		}
-		catch(PDOException $e)
-		{
+        }
+        catch(PDOException $e)
+        {
 
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function createClicksTable($db)
-	{
-		try {
+    public function createClicksTable($db)
+    {
+        try {
 
-			$db->exec("CREATE TABLE IF NOT EXISTS clicks (
-					id INTEGER PRIMARY KEY,
+            $db->exec("CREATE TABLE IF NOT EXISTS clicks (
+                    id INTEGER PRIMARY KEY,
                     total INTEGER)");
 
-			$this->proxyLog->log("clicks table created!");
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log("clicks table created!");
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-		try {
+        try {
 
-			$db->exec('CREATE INDEX total ON clicks (total)');
+            $db->exec('CREATE INDEX total ON clicks (total)');
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function createResourceIpTable($db)
-	{
-		try {
+    public function createResourceIpTable($db)
+    {
+        try {
 
-			$db->exec("CREATE TABLE IF NOT EXISTS ips (
+            $db->exec("CREATE TABLE IF NOT EXISTS ips (
                     id INTEGER PRIMARY KEY,
                     url VARCHAR(255),
                     ip VARCHAR(50),
-					count INTEGER,
-					rate INTEGER,
+                    count INTEGER,
+                    rate INTEGER,
                     time INTEGER)");
 
-			$this->proxyLog->log("ips table created!");
+            $this->proxyLog->log("ips table created!");
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-		try {
+        try {
 
-			$db->exec('CREATE INDEX url ON ips (url)');
+            $db->exec('CREATE INDEX url ON ips (url)');
 
-			$db->exec('CREATE INDEX ip ON ips (ip)');
+            $db->exec('CREATE INDEX ip ON ips (ip)');
 
-			$db->exec('CREATE INDEX count ON ips (count)');
+            $db->exec('CREATE INDEX count ON ips (count)');
 
-			$db->exec('CREATE INDEX rate ON ips (rate)');
+            $db->exec('CREATE INDEX rate ON ips (rate)');
 
-			$db->exec('CREATE INDEX time ON ips (time)');
+            $db->exec('CREATE INDEX time ON ips (time)');
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function getClickCount()
-	{
-		$db = $this->getConnection();
+    public function getClickCount()
+    {
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sth = $db->prepare("SELECT total FROM clicks WHERE id = :id");
+            $sth = $db->prepare("SELECT total FROM clicks WHERE id = :id");
 
-			$sth->execute(array(':id' => 1)) or die($this->getDatabaseErrorMessage());
+            $sth->execute(array(':id' => 1)) or die($this->getDatabaseErrorMessage());
 
-			$r = $sth->fetchAll();
+            $r = $sth->fetchAll();
 
-			return $r[0]['total'];
+            return $r[0]['total'];
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
-	}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
+    }
 
-	public function selectLastRequest()
-	{
+    public function selectLastRequest()
+    {
 
-		$db = $this->getConnection();
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sth = $db->prepare("SELECT time, id, count, rate FROM ips WHERE url = :url AND ip = :ip");
+            $sth = $db->prepare("SELECT time, id, count, rate FROM ips WHERE url = :url AND ip = :ip");
 
-			$sth->execute(array(':url' => $this->resourceUrl, ':ip' => $this->ip)) or die($this->getDatabaseErrorMessage());
+            $sth->execute(array(':url' => $this->resourceUrl, ':ip' => $this->ip)) or die($this->getDatabaseErrorMessage());
 
-			$r = $sth->fetchAll();
+            $r = $sth->fetchAll();
 
-			return $r[0];
+            return $r[0];
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
-	}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
+    }
 
-	public function updateResourceIp($id)
-	{
-		$db = $this->getConnection();
+    public function updateResourceIp($id)
+    {
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sth = $db->prepare("UPDATE ips SET id=:id, url=:url, ip=:ip, count=:count, rate=:rate, time=:time WHERE id = :id");
+            $sth = $db->prepare("UPDATE ips SET id=:id, url=:url, ip=:ip, count=:count, rate=:rate, time=:time WHERE id = :id");
 
-			$sth->bindValue(':id', $id);
+            $sth->bindValue(':id', $id);
 
-			$sth->bindValue(':url', $this->resourceUrl);
+            $sth->bindValue(':url', $this->resourceUrl);
 
-			$sth->bindValue(':ip', $this->ip);
+            $sth->bindValue(':ip', $this->ip);
 
-			$sth->bindValue(':count', $this->count);
+            $sth->bindValue(':count', $this->count);
 
-			$sth->bindValue(':rate', $this->rate);
+            $sth->bindValue(':rate', $this->rate);
 
-			$sth->bindValue(':time', $this->microtime);
+            $sth->bindValue(':time', $this->microtime);
 
-			$sth->execute() or die($this->getDatabaseErrorMessage());
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+            $sth->execute() or die($this->getDatabaseErrorMessage());
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function updateClicks($id, $total)
-	{
+    public function updateClicks($id, $total)
+    {
 
-		$db = $this->getConnection();
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sth = $db->prepare("UPDATE clicks SET total=:total WHERE id = :id");
+            $sth = $db->prepare("UPDATE clicks SET total=:total WHERE id = :id");
 
-			$sth->bindValue(':id', $id);
+            $sth->bindValue(':id', $id);
 
-			$sth->bindValue(':total', $total);
+            $sth->bindValue(':total', $total);
 
-			$sth->execute() or die($this->getDatabaseErrorMessage());
-		}
-		catch(PDOException $e)
-		{
+            $sth->execute() or die($this->getDatabaseErrorMessage());
+        }
+        catch(PDOException $e)
+        {
 
-			$this->proxyLog->log($e->getMessage());
-		}
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function insertResourceIp()
-	{
-		$db = $this->getConnection();
+    public function insertResourceIp()
+    {
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sql = "INSERT INTO ips (id, url, ip, count, rate, time) VALUES (:id,:url,:ip,:count,:rate,:time)";
+            $sql = "INSERT INTO ips (id, url, ip, count, rate, time) VALUES (:id,:url,:ip,:count,:rate,:time)";
 
-			$q = $db->prepare($sql);
+            $q = $db->prepare($sql);
 
-			$q->bindValue(':id', null);
+            $q->bindValue(':id', null);
 
-			$q->bindValue(':url', $this->resourceUrl);
+            $q->bindValue(':url', $this->resourceUrl);
 
-			$q->bindValue(':ip', $this->ip);
+            $q->bindValue(':ip', $this->ip);
 
-			$q->bindValue(':count', $this->count);
+            $q->bindValue(':count', $this->count);
 
-			$q->bindValue(':rate', $this->rate);
+            $q->bindValue(':rate', $this->rate);
 
-			$q->bindValue(':time', $this->microtime);
+            $q->bindValue(':time', $this->microtime);
 
-			$q->execute() or die($this->getDatabaseErrorMessage());
+            $q->execute() or die($this->getDatabaseErrorMessage());
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
 
-	}
+    }
 
-	public function canBeCleaned($count, $lastTime, $rate)
-	{
-		$tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastTime);
+    public function canBeCleaned($count, $lastTime, $rate)
+    {
+        $tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastTime);
 
-		return $count - $tsTotalSeconds * $rate <= 0;
-	}
+        return $count - $tsTotalSeconds * $rate <= 0;
+    }
 
-	public function fetchAllIps() {
+    public function fetchAllIps() {
 
-		$this->microtime = microtime(true);
+        $this->microtime = microtime(true);
 
-		$db = $this->getConnection();
+        $db = $this->getConnection();
 
-		try {
+        try {
 
-			$sth = $db->prepare("SELECT * FROM ips;");
+            $sth = $db->prepare("SELECT * FROM ips;");
 
-			$sth->execute() or die($this->getDatabaseErrorMessage());
+            $sth->execute() or die($this->getDatabaseErrorMessage());
 
-			$r = $sth->fetchAll();
+            $r = $sth->fetchAll();
 
-			return $r;
+            return $r;
 
-		}
-		catch(PDOException $e)
-		{
-			$this->proxyLog->log($e->getMessage());
-		}
-	}
+        }
+        catch(PDOException $e)
+        {
+            $this->proxyLog->log($e->getMessage());
+        }
+    }
 
 
-	public function rateMeterCleanup()
-	{
-		$db = $this->getConnection();
+    public function rateMeterCleanup()
+    {
+        $db = $this->getConnection();
 
-		$r = $this->fetchAllIps();
+        $r = $this->fetchAllIps();
 
-		$deletes = array();
+        $deletes = array();
 
-		foreach ($r as $item => $value)
-		{
+        foreach ($r as $item => $value)
+        {
 
-			if($this->canBeCleaned($value['count'], $value['time'], $value['rate'])){
+            if($this->canBeCleaned($value['count'], $value['time'], $value['rate'])){
 
-				$this->proxyLog->log($value['id'] . "::id");
+                $this->proxyLog->log($value['id'] . "::id");
 
-				$deletes[] = $value['id'];
+                $deletes[] = $value['id'];
 
-			}else{
+            }else{
 
-				$this->proxyLog->log('Nothing to clean.');
+                $this->proxyLog->log('Nothing to clean.');
 
-			}
+            }
 
-		}
+        }
 
-		$hasDeletes = (boolean)$deletes;
+        $hasDeletes = (boolean)$deletes;
 
-		if($hasDeletes){
+        if($hasDeletes){
 
-			$placeholders = implode(',', array_fill(0, count($deletes), '?'));
+            $placeholders = implode(',', array_fill(0, count($deletes), '?'));
 
-			$stmt = $db->prepare('DELETE FROM ips WHERE id IN(' . $placeholders . ')'); //Using indexed based binding pattern
+            $stmt = $db->prepare('DELETE FROM ips WHERE id IN(' . $placeholders . ')'); //Using indexed based binding pattern
 
-			foreach ($deletes as $k => $id){
+            foreach ($deletes as $k => $id){
 
-				$stmt->bindValue(($k+1), $id);
+                $stmt->bindValue(($k+1), $id);
 
-			}
+            }
 
-			try {
+            try {
 
-				$stmt->execute();
+                $stmt->execute();
 
-				$this->proxyLog->log('Cleanup occured.');
+                $this->proxyLog->log('Cleanup occured.');
 
-			} catch (Exception $e) {
+            } catch (Exception $e) {
 
-				$this->proxyLog->log($e->getMessage());
+                $this->proxyLog->log($e->getMessage());
 
-			}
+            }
 
-		}
+        }
 
-	}
+    }
 
 
-	public function checkRateMeter()
-	{
-		$this->microtime = microtime(true);
+    public function checkRateMeter()
+    {
+        $this->microtime = microtime(true);
 
-		$lastRequest = $this->selectLastRequest();
+        $lastRequest = $this->selectLastRequest();
 
-		$clickCount = $this->getClickCount();
+        $clickCount = $this->getClickCount();
 
-		$clickCount = $clickCount + 1;
+        $clickCount = $clickCount + 1;
 
-		$this->updateClicks(1, $clickCount); //Updating the click table so we know when to clean up (aka after 10,000 requests)
+        $this->updateClicks(1, $clickCount); //Updating the click table so we know when to clean up (aka after 10,000 requests)
 
-		if ($lastRequest != null || count($lastRequest) > 0) {
+        if ($lastRequest != null || count($lastRequest) > 0) {
 
-			$count = $lastRequest['count'];
+            $count = $lastRequest['count'];
 
-			$tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastRequest['time']);
+            $tsTotalSeconds = $this->getTimeDifferenceInSeconds($lastRequest['time']);
 
-			// $this->debugMeterAlgorithm($count, $tsTotalSeconds, $this->rate);
+            // $this->debugMeterAlgorithm($count, $tsTotalSeconds, $this->rate);
 
-			$count = max(0, $count - $tsTotalSeconds * $this->rate);
+            $count = max(0, $count - $tsTotalSeconds * $this->rate);
 
-			if ($count <= $this->countCap) {
+            if ($count <= $this->countCap) {
 
-				$this->underMeterCap = true;
+                $this->underMeterCap = true;
 
-				$count = $count + 1;
+                $count = $count + 1;
 
-				$this->count = $count;
+                $this->count = $count;
 
-				$this->updateResourceIp($lastRequest['id']);
+                $this->updateResourceIp($lastRequest['id']);
 
-				return true;
+                return true;
 
-			}
+            }
 
-		}else{
+        }else{
 
-			$this->insertResourceIp(); //Add item to ips table.
+            $this->insertResourceIp(); //Add item to ips table.
 
-			$this->underMeterCap = true;
+            $this->underMeterCap = true;
 
-			return;
-		}
+            return;
+        }
 
-		$this->underMeterCap = false;
+        $this->underMeterCap = false;
 
-		if($clickCount >= RateMeter::CLEAN_RATEMAP_AFTER)
-		{
-			$this->proxyLog->log("Click count: " . $clickCount);
+        if($clickCount >= RateMeter::CLEAN_RATEMAP_AFTER)
+        {
+            $this->proxyLog->log("Click count: " . $clickCount);
 
-			$this->rateMeterCleanup();
+            $this->rateMeterCleanup();
 
-			$this->updateClicks(1, 0); //Set click counter back to zero after cleanup.
+            $this->updateClicks(1, 0); //Set click counter back to zero after cleanup.
 
-		}
+        }
 
-		return;
+        return;
 
-	}
-	public function debugMeterAlgorithm($count, $tsTotalSeconds, $rate)
-	{
-		$debugCountValue = $count - $tsTotalSeconds * $rate;
+    }
+    public function debugMeterAlgorithm($count, $tsTotalSeconds, $rate)
+    {
+        $debugCountValue = $count - $tsTotalSeconds * $rate;
 
-		$this->proxyLog->log("Count is ( count - timespan x rate ) : " . $count . " - " . $tsTotalSeconds . " x " . $rate . " = " . $debugCountValue);
+        $this->proxyLog->log("Count is ( count - timespan x rate ) : " . $count . " - " . $tsTotalSeconds . " x " . $rate . " = " . $debugCountValue);
 
-		$this->proxyLog->log("debugCountValue:::" . $debugCountValue);
+        $this->proxyLog->log("debugCountValue:::" . $debugCountValue);
 
-	}
+    }
 
 
-	public function getTimeDifferenceInSeconds($firstTime, $secondTime = null)
-	{
+    public function getTimeDifferenceInSeconds($firstTime, $secondTime = null)
+    {
 
 
-		if($firstTime == null)
-		{
-			$this->proxyLog->log("No time value was returned from 'ips' table in Sqlite database!");
+        if($firstTime == null)
+        {
+            $this->proxyLog->log("No time value was returned from 'ips' table in Sqlite database!");
 
-			header('Status: 200', true, 200);
+            header('Status: 200', true, 200);
 
-			header('Content-Type: application/json');
+            header('Content-Type: application/json');
 
-			$serverError = array(
-					"error" => array("code" => 500,
-							"details" => array("No time value was returned from 'ips' table in Sqlite database.  Consider backing up and then deleting sqlite database."),
-							"message" => "Proxy failed due to missing value in database."
-					));
+            $serverError = array(
+                    "error" => array("code" => 500,
+                            "details" => array("No time value was returned from 'ips' table in Sqlite database.  Consider backing up and then deleting sqlite database."),
+                            "message" => "Proxy failed due to missing value in database."
+                    ));
 
-			echo json_encode($serverError);
+            echo json_encode($serverError);
 
-			exit();
+            exit();
 
-		}
+        }
 
-		if($secondTime == null)
-		{
-			$secondTime = microtime(true);
-		}
+        if($secondTime == null)
+        {
+            $secondTime = microtime(true);
+        }
 
-		$time = array($firstTime, $secondTime);
+        $time = array($firstTime, $secondTime);
 
-		sort($time);
+        sort($time);
 
-		$diff = $time[1] - $time[0];
+        $diff = $time[1] - $time[0];
 
-		return $diff;
+        return $diff;
 
-	}
+    }
 
 
-	public function underMeterCap()
-	{
-		if(empty($this->countCap) || empty($this->ratelimitperiod)) {
+    public function underMeterCap()
+    {
+        if(empty($this->countCap) || empty($this->ratelimitperiod)) {
 
-			return true;
+            return true;
 
-		}
+        }
 
-		$this->checkRateMeter();
+        $this->checkRateMeter();
 
-		if($this->underMeterCap)
-		{
-			return true;
+        if($this->underMeterCap)
+        {
+            return true;
 
-		}else{
+        }else{
 
-			return false;
-		}
-	}
+            return false;
+        }
+    }
 
-	public function getDatabaseErrorMessage()
-	{
-		$this->proxyLog->log("A database error occured.");
+    public function getDatabaseErrorMessage()
+    {
+        $this->proxyLog->log("A database error occured.");
 
-		header('Status: 200', true, 200);
+        header('Status: 200', true, 200);
 
-		header('Content-Type: application/json');
+        header('Content-Type: application/json');
 
-		$dbError = array(
-				"error" => array("code" => 500,
-						"details" => array("A database error occured.  Consider backing up and then deleting sqlite database."),
-						"message" => "Proxy failed due to database error."
-				));
+        $dbError = array(
+                "error" => array("code" => 500,
+                        "details" => array("A database error occured.  Consider backing up and then deleting sqlite database."),
+                        "message" => "Proxy failed due to database error."
+                ));
 
-		return json_encode($dbError);
-	}
+        return json_encode($dbError);
+    }
 
-	function __destruct()
-	{
-		$this->con = null;
+    function __destruct()
+    {
+        $this->con = null;
 
-	}
+    }
 
 }
 
 class ProxyConfig {
 
-	public $proxyConfig;
+    public $proxyConfig;
 
-	public $serverUrls;
+    public $serverUrls;
 
-	public function __construct()
-	{
+    public function __construct()
+    {
 
-	}
+    }
 
-	public function useXML()
-	{
+    public function useXML()
+    {
 
-		$xmlParser = new XmlParser();
+        $xmlParser = new XmlParser();
 
-		$proxyconfig = $xmlParser->results[0]['proxyconfig'];
+        $proxyconfig = $xmlParser->results[0]['proxyconfig'];
 
-		$proxyconfig = $this->lowercaseArrayKeys($proxyconfig, CASE_LOWER);
+        $proxyconfig = $this->lowercaseArrayKeys($proxyconfig, CASE_LOWER);
 
-		$proxyConfig = $this->setProxyConfig($proxyconfig);
+        $proxyConfig = $this->setProxyConfig($proxyconfig);
 
-		$serverUrls = $xmlParser->results[0]['childrens'][0]['childrens'];
+        $serverUrls = $xmlParser->results[0]['childrens'][0]['childrens'];
 
-		$serverUrls = $this->lowercaseArrayKeys($serverUrls, CASE_LOWER);
+        $serverUrls = $this->lowercaseArrayKeys($serverUrls, CASE_LOWER);
 
-		$normalizeServerUrls = $this->normalizeServerUrls($serverUrls);
+        $normalizeServerUrls = $this->normalizeServerUrls($serverUrls);
 
-		$this->setServerUrls($normalizeServerUrls);
+        $this->setServerUrls($normalizeServerUrls);
 
-		$allowedReferers = explode(",", $this->proxyConfig['allowedreferers']); //Change XML allowedreferers from string to array
+        $allowedReferers = explode(",", $this->proxyConfig['allowedreferers']); //Change XML allowedreferers from string to array
 
-		$this->proxyConfig['allowedreferers'] = $allowedReferers; //Add above array to the proxyconfig property
+        $this->proxyConfig['allowedreferers'] = $allowedReferers; //Add above array to the proxyconfig property
 
-		$xmlParser = null;
+        $xmlParser = null;
 
-	}
+    }
 
-	function lowercaseArrayKeys($array, $case)
-	{
-		$array = array_change_key_case($array, $case);
+    function lowercaseArrayKeys($array, $case)
+    {
+        $array = array_change_key_case($array, $case);
 
-		foreach ($array as $key => $value) {
+        foreach ($array as $key => $value) {
 
-			if ( is_array($value) ) {
+            if ( is_array($value) ) {
 
-				$array[$key] = $this->lowercaseArrayKeys($value, $case);
+                $array[$key] = $this->lowercaseArrayKeys($value, $case);
 
-			}
-		}
+            }
+        }
 
-		return $array;
-	}
+        return $array;
+    }
 
 
-	public function normalizeServerUrls($serverUrls) {
+    public function normalizeServerUrls($serverUrls) {
 
-		$formatedData = array();
+        $formatedData = array();
 
-		foreach ($serverUrls as $key => $item) {
+        foreach ($serverUrls as $key => $item) {
 
-			if(is_array($item)) {
+            if(is_array($item)) {
 
-				foreach ($item as $k => $v) {
+                foreach ($item as $k => $v) {
 
-					if(is_array($v)) {
+                    if(is_array($v)) {
 
-						$normal = array("serverurl" => array(0=>$v));
+                        $normal = array("serverurl" => array(0=>$v));
 
-						$formatedData[] = $normal;
+                        $formatedData[] = $normal;
 
-					}
+                    }
 
-				}
-			}
-		}
+                }
+            }
+        }
 
-		return $formatedData;
-	}
+        return $formatedData;
+    }
 
 
-	public function useJSON()
-	{
-		try {
+    public function useJSON()
+    {
+        try {
 
-			$c = file_get_contents("proxy.config");
+            $c = file_get_contents("proxy.config");
 
-			$configJson = json_decode($c, true);
+            $configJson = json_decode($c, true);
 
-			$config = $this->lowercaseArrayKeys($configJson, CASE_LOWER);
+            $config = $this->lowercaseArrayKeys($configJson, CASE_LOWER);
 
-			$this->setProxyConfig($config['proxyconfig'][0]);
+            $this->setProxyConfig($config['proxyconfig'][0]);
 
-			$this->setServerUrls($config['serverurls']);
+            $this->setServerUrls($config['serverurls']);
 
-		}catch (Exception $e) {
+        }catch (Exception $e) {
 
-			$this->proxyLog->log($e->getMessage());
+            $this->proxyLog->log($e->getMessage());
 
-		}
+        }
 
-	}
+    }
 
-	public function __set($property, $value)
-	{
-		$method = 'set' . $value;
+    public function __set($property, $value)
+    {
+        $method = 'set' . $value;
 
-		if (!method_exists($this, $method))
-		{
+        if (!method_exists($this, $method))
+        {
 
-			throw new Exception('Error in proxy config.');
-		}
+            throw new Exception('Error in proxy config.');
+        }
 
-		$this->$method($value);
-	}
+        $this->$method($value);
+    }
 
-	public function __get($property)
-	{
-		$method = 'get' . $property;
+    public function __get($property)
+    {
+        $method = 'get' . $property;
 
-		if (!method_exists($this, $method))
-		{
-			throw new Exception('Error in proxy config.');
-		}
+        if (!method_exists($this, $method))
+        {
+            throw new Exception('Error in proxy config.');
+        }
 
-		return $this->$method();
-	}
+        return $this->$method();
+    }
 
-	public function setOptions(array $options)
-	{
-		$methods = get_class_methods($this);
+    public function setOptions(array $options)
+    {
+        $methods = get_class_methods($this);
 
-		foreach ($options as $key => $value) {
+        foreach ($options as $key => $value) {
 
-			$method = 'set' . ucfirst($key);
+            $method = 'set' . ucfirst($key);
 
-			if (in_array($method, $methods))
-			{
-				$this->$method($value);
-			}
-		}
+            if (in_array($method, $methods))
+            {
+                $this->$method($value);
+            }
+        }
 
-		return $this;
-	}
+        return $this;
+    }
 
-	public function getServerUrls()
-	{
+    public function getServerUrls()
+    {
 
-		return $this->serverUrls;
+        return $this->serverUrls;
 
-	}
+    }
 
-	public function setServerUrls($item)
-	{
+    public function setServerUrls($item)
+    {
 
-		$this->serverUrls = $item;
+        $this->serverUrls = $item;
 
-		return $this;
+        return $this;
 
-	}
+    }
 
-	public function getProxyConfig()
-	{
+    public function getProxyConfig()
+    {
 
-		return $this->proxyConfig;
+        return $this->proxyConfig;
 
-	}
+    }
 
-	public function setProxyConfig($item)
-	{
+    public function setProxyConfig($item)
+    {
 
-		$this->proxyConfig = $item;
+        $this->proxyConfig = $item;
 
-		return $this;
-	}
+        return $this;
+    }
 
-	function __destruct()
-	{
+    function __destruct()
+    {
 
-	}
+    }
 
 }
 
 class XmlParser
 {
-	public $results = array();
+    public $results = array();
 
-	public $parser;
+    public $parser;
 
-	public $xmlString;
+    public $xmlString;
 
-	public $file;
+    public $file;
 
     function XmlParser($f = "proxy.config")
     {
@@ -2372,57 +2324,57 @@ class XmlParser
         return $this->parse($xml);
     }
 
-	function parse($xml)
-	{
-		$this->parser = xml_parser_create();
+    function parse($xml)
+    {
+        $this->parser = xml_parser_create();
 
-		xml_set_object($this->parser, $this);
+        xml_set_object($this->parser, $this);
 
-		xml_set_element_handler($this->parser, "tagStart", "tagEnd");
+        xml_set_element_handler($this->parser, "tagStart", "tagEnd");
 
-		$this->xmlString = xml_parse($this->parser,$xml);
+        $this->xmlString = xml_parse($this->parser,$xml);
 
-		if(!$this->xmlString)
-		{
-			die(sprintf("Config XML error: %s at line %d",
-					xml_error_string(xml_get_error_code($this->parser)),
-					xml_get_current_line_number($this->parser))); //This is before we have the log location
-		}
+        if(!$this->xmlString)
+        {
+            die(sprintf("Config XML error: %s at line %d",
+                    xml_error_string(xml_get_error_code($this->parser)),
+                    xml_get_current_line_number($this->parser))); //This is before we have the log location
+        }
 
-		xml_parser_free($this->parser);
+        xml_parser_free($this->parser);
 
-		return $this->results;
-	}
+        return $this->results;
+    }
 
-	function tagStart($parser, $name, $attrs)
-	{
-		$attrs = array_change_key_case($attrs, CASE_LOWER);
+    function tagStart($parser, $name, $attrs)
+    {
+        $attrs = array_change_key_case($attrs, CASE_LOWER);
 
-		$tag = array(strtolower($name) => $attrs);
+        $tag = array(strtolower($name) => $attrs);
 
-		array_push($this->results, $tag);
-	}
+        array_push($this->results, $tag);
+    }
 
 
-	function tagEnd($parser, $name)
-	{
+    function tagEnd($parser, $name)
+    {
 
-		//http://www.php.net/manual/en/function.xml-parse.php
+        //http://www.php.net/manual/en/function.xml-parse.php
 
-		$this->results[count($this->results)-2]['childrens'][] = $this->results[count($this->results)-1];
+        $this->results[count($this->results)-2]['childrens'][] = $this->results[count($this->results)-1];
 
-		if(count($this->results[count($this->results)-2]['childrens'] ) == 1)
-		{
-			$this->results[count($this->results)-2]['firstchild'] =& $this->results[count($this->results)-2]['childrens'][0];
-		}
+        if(count($this->results[count($this->results)-2]['childrens'] ) == 1)
+        {
+            $this->results[count($this->results)-2]['firstchild'] =& $this->results[count($this->results)-2]['childrens'][0];
+        }
 
-		array_pop($this->results);
-	}
+        array_pop($this->results);
+    }
 
-	function __destruct()
-	{
+    function __destruct()
+    {
 
-	}
+    }
 
 }
 

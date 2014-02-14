@@ -2,29 +2,29 @@
 <head><title>Prerequisites Checker</title></head>
 <style>
 body{
-	margin-left:12px;
-	margin-left:30px;
-	margin-right:30px;
-	margin-bottom:10px;
+    margin-left:12px;
+    margin-left:30px;
+    margin-right:30px;
+    margin-bottom:10px;
 }
 .requirements-div {
-	margin-top:16px;
-	margin-left:20px;
-	margin-right:20px;
-	margin-bottom:10px;
+    margin-top:16px;
+    margin-left:20px;
+    margin-right:20px;
+    margin-bottom:10px;
 }
 table {
-	border: 1px solid #696969;
+    border: 1px solid #696969;
     width: 50%;
 }
 .pass {
-	color:#3CB371;
+    color:#3CB371;
 }
 .fail {
-	color:#FF4500;
+    color:#FF4500;
 }
 .warning {
-	color:#FFA500;
+    color:#FFA500;
 }
 </style>
 <body>
@@ -34,120 +34,120 @@ error_reporting(0);
 
 class Paths
 {
-	public $pearPath;
-	public $requestsPath;
+    public $pearPath;
+    public $requestsPath;
 }
 
 function include_exists($fileName){
-	if (realpath($fileName) == $fileName) {
-		return is_file($fileName);
-	}
-	if ( is_file($fileName) ){
-		return true;
-	}
+    if (realpath($fileName) == $fileName) {
+        return is_file($fileName);
+    }
+    if ( is_file($fileName) ){
+        return true;
+    }
 
-	$paths = explode(PATH_SEPARATOR, get_include_path());
+    $paths = explode(PATH_SEPARATOR, get_include_path());
 
-	foreach ($paths as $key => $path) {
+    foreach ($paths as $key => $path) {
 
-		$rp = $path . DIRECTORY_SEPARATOR . $fileName;
+        $rp = $path . DIRECTORY_SEPARATOR . $fileName;
 
-		if (is_file($rp)) {
+        if (is_file($rp)) {
 
-			if($fileName == 'PEAR' . DIRECTORY_SEPARATOR .'Registry.php'){
+            if($fileName == 'PEAR' . DIRECTORY_SEPARATOR .'Registry.php'){
 
-				$path = $rp;
-			}
+                $path = $rp;
+            }
 
-			if($fileName == 'HTTP' . DIRECTORY_SEPARATOR . 'Request2.php'){
+            if($fileName == 'HTTP' . DIRECTORY_SEPARATOR . 'Request2.php'){
 
-				$path = $rp;
-			}
+                $path = $rp;
+            }
 
-			return array('result' => true, 'path' => $path);
-		}
-	}
+            return array('result' => true, 'path' => $path);
+        }
+    }
 
-	return false;
+    return false;
 }
 
 function pear_prerequisutes()
 {
-	$exists = include_exists('PEAR' . DIRECTORY_SEPARATOR .'Registry.php');
-	if($exists['result'])
-	{
-		require_once 'PEAR/Registry.php';
-		$reg = new PEAR_Registry();
-		$packages = $reg->listPackages();
-		if(in_array('http_request2', $packages))
-		{
-			$results = array('pear'=>"Pass", 'http_request2'=>"Pass", 'path'=>$exists['path']);
-		}else{
-			$results = array('pear'=>"Pass", 'http_request2'=>"Fail", 'path'=>$exists['path']);
-		}
-	}else{
-		$results = array('pear'=>"Fail", 'http_request2'=>"Fail", 'path'=>$exists['path']);
-	}
-	return $results;
+    $exists = include_exists('PEAR' . DIRECTORY_SEPARATOR .'Registry.php');
+    if($exists['result'])
+    {
+        require_once 'PEAR/Registry.php';
+        $reg = new PEAR_Registry();
+        $packages = $reg->listPackages();
+        if(in_array('http_request2', $packages))
+        {
+            $results = array('pear'=>"Pass", 'http_request2'=>"Pass", 'path'=>$exists['path']);
+        }else{
+            $results = array('pear'=>"Pass", 'http_request2'=>"Fail", 'path'=>$exists['path']);
+        }
+    }else{
+        $results = array('pear'=>"Fail", 'http_request2'=>"Fail", 'path'=>$exists['path']);
+    }
+    return $results;
 }
 
 function http_requests2_exists()
 {
-	$exists = include_exists('HTTP' . DIRECTORY_SEPARATOR . 'Request2.php');
+    $exists = include_exists('HTTP' . DIRECTORY_SEPARATOR . 'Request2.php');
 
-	if($exists['result'])
-	{
-		return array('result' => "Pass", 'path'=> $exists['path']);
+    if($exists['result'])
+    {
+        return array('result' => "Pass", 'path'=> $exists['path']);
 
-	}else{
+    }else{
 
-		return array('result' => "Fail", 'path'=> $exists['path']);
+        return array('result' => "Fail", 'path'=> $exists['path']);
 
-	}
+    }
 }
 
 function can_write()
 {
-	$dir = getcwd();
-	$t = is_writable($dir);
-	return $t;
+    $dir = getcwd();
+    $t = is_writable($dir);
+    return $t;
 }
 
 function getShmopMessage($shmop)
 {
-	$message = null;
-	if($shmop == true)
-	{
-		$message = "Pass";
-	}else if($shmop == false){
-		$message = "Warning";
-	}else{
-		$message = "Fail";
-	}
-	return $message;
+    $message = null;
+    if($shmop == true)
+    {
+        $message = "Pass";
+    }else if($shmop == false){
+        $message = "Warning";
+    }else{
+        $message = "Fail";
+    }
+    return $message;
 }
 
 function getMbstringMessage($mbstring)
 {
-	$message = null;
-	if($mbstring == true)
-	{
-		$message = "Pass";
-	}else if($mbstring == false){
-		$message = "Warning";
-	}else{
-		$message = "Fail";
-	}
-	return $message;
+    $message = null;
+    if($mbstring == true)
+    {
+        $message = "Pass";
+    }else if($mbstring == false){
+        $message = "Warning";
+    }else{
+        $message = "Fail";
+    }
+    return $message;
 }
 
 function versionPhpCheck()
 {
-	if (version_compare(PHP_VERSION, '5.4.2') >= 0) {
-		return "Pass";
-	}else{
-		return "Fail";
-	}
+    if (version_compare(PHP_VERSION, '5.4.2') >= 0) {
+        return "Pass";
+    }else{
+        return "Fail";
+    }
 }
 
 $bool = array(true=>"Pass", false=>"Fail");
@@ -162,7 +162,7 @@ $curl = in_array('curl', $extensions);
 ?>
 <h2>Checks php proxy requirements</h2>
 <small>* Run this page from a web server directory that includes the proxy.php file</small><br/>
-<small>* It's reccomended to remove this file from web server once all below tests pass</small>
+<small>* It's recommended to remove this file from web server once all below tests pass</small>
 <br/><br/>
 <p>Manually test the web server's configuration by clicking <a href="proxy.config">here</a>.  If the proxy configuration file (proxy.config) displays or gets downloaded, the server is <u>not</u> configured properly to use this proxy (see guide for more details).<br/><br/>
 

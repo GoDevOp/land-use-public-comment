@@ -13,9 +13,9 @@ A Java proxy that handles support for
 
 * Download and unzip the .zip file, or clone the repository.
 * Install the contents of the Java folder as a Web Application in an web container such as Apache Tomcat.
-* Test that the proxy is able to forward pages directly in the browser using syntax similar to the following
+* Test that the proxy is able to forward requests directly in the browser using:
 ```
-http://[yourmachine]/DotNet/proxy.ashx?http://services.arcgisonline.com/ArcGIS/rest/services/?f=pjson
+http://[yourmachine]/Java/proxy.jsp?http://services.arcgisonline.com/ArcGIS/rest/services/?f=pjson
 ```
 * Edit the proxy.config file in a text editor to set up your proxy configuration settings.
 * Update your application to use the proxy for the specified services. In this JavaScript example requests to route.arcgis.com will utilize the proxy.
@@ -26,6 +26,7 @@ http://[yourmachine]/DotNet/proxy.ashx?http://services.arcgisonline.com/ArcGIS/r
         proxyUrl: "http://[yourmachine]/proxy/proxy.jsp"
     });
 ```
+* Security tip: By default, the proxy.config allows any referrer. To lock this down, replace the  ```*``` in the ```allowedReferers``` property with your own application URLs.
 
 ##Proxy Configuration Settings
 
@@ -34,12 +35,12 @@ http://[yourmachine]/DotNet/proxy.ashx?http://services.arcgisonline.com/ArcGIS/r
     * **logFile="\<file with local path\>"** : When a path to a local file is specified event messages will be logged.
     * **logLevel="SEVERE"** : Sets the level of logging to be used.  Defaults to SEVERE. Possible values are SEVERE, WARNING, INFO, CONFIG, FINE, FINER and FINEST.
     * **allowedReferers ="http://server.com/application1,https://server.com/application2"**: A comma-separated list of referer URLs. Only requests coming from referers in the list will be proxied.
-* Add new \<serverUrl\> entry for each service that will use the proxy page. The proxy.config allows you to use the serverUrl tag to specify one or more ArcGIS Server services that the proxy will forward requests to. The serverUrl tags has the following attributes:
+* Add new \<serverUrl\> entry for each service that will use the proxy. The proxy.config allows you to use the serverUrl tag to specify one or more ArcGIS Server services that the proxy will forward requests to. The serverUrl tags has the following attributes:
     * **url**: Location of the ArcGIS Server service (or other URL) to proxy. Specify either the specific URL or the root (in which case you shoould set matchAll="false"). If the location starts with "//", any protocol will be accepted, if the location starts with "http://", both http or https will be accepted, and if the location starts with "https://", only https will be accepted.
     * **matchAll="true"**: When true all requests that begin with the specified URL are forwarded. Otherwise, the URL requested must match exactly.
     * **username**: Username to use when requesting a token - if needed for ArcGIS Server token based authentication.
     * **password**: Password to use when requesting a token - if needed for ArcGIS Server token based authentication.
-    * **tokenServiceUri**: If username and password are specified, the proxy will use the supplied token service uri to request a token.  If this value is left blank, the proxy page will request a token URL from the ArcGIS server.
+    * **tokenServiceUri**: If username and password are specified, the proxy will use the supplied token service uri to request a token.  If this value is left blank, the proxy will request a token URL from the ArcGIS server.
     * **clientId**.  Used with clientSecret for OAuth authentication to obtain a token - if needed for OAuth 2.0 authentication.
     * **clientSecret**: Used with clientId for OAuth authentication to obtain a token - if needed for OAuth 2.0 authentication.
     * **oauth2Endpoint**: When using OAuth 2.0 authentication specify the portal specific OAuth 2.0 authentication endpoint. The default value is https://www.arcgis.com/sharing/oauth2/.
@@ -52,7 +53,7 @@ See the proxy.config for examples. Note: Refresh the proxy application after upd
 
 The proxy consists of the following files:
 * proxy.jsp: The actual proxy application. In most cases you will not need to modify this file.
-* WEB-INF/classes/proxy.config: This file contains the configuration settings for the proxy. This is where you will define all the resources that will use the proxy. After updating this file you will need to restart or update the proxy application from your web container.
+* WEB-INF/classes/proxy.config: This file contains the configuration settings for the proxy. This is where you will define all the resources that will use the proxy. After updating this file you will need to restart or update the proxy application from your web container. **Important note:** In order to keep your credentials safe, ensure that your web server will not display the text inside your proxy.config in the browser (ie: http://[yourmachine]/proxy/proxy.config).
 
 ##Requirements
 
