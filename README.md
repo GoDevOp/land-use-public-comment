@@ -1,10 +1,12 @@
 # land-use-public-comment
 
-The Land Use Public Comment application is a configuration of ArcGIS Server and a JavaScript application that allows the general public and other interested parties to comment on proposed land use cases being heard in their Local Government.  It provides 24/7 access to your government organization and typically supplements statutory public notice requirements. In local governments that are using technology during their planning commission, zoning board of appeals, or governing body's meetings, the online comments can be viewed during the hearing and at the same time residents are commenting in person on the proposal. If technology is not present, a manual report can be created and routed to appropriate staff.
+Land Use Public Comment is a configuration of ArcGIS and a JavaScript application that allows the general public and other interested parties to comment on proposed land-use cases being heard by their local government from a smartphone, tablet, and desktop computer.
 
-[Try the Land Use Public Comment application](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
+Land Use Public Comment can be used by planning and zoning, building, or other local government organizations to deliver a web-based public comment application. This application provides 24/7 access to an organization and typically supplements statutory public notice requirements.
 
-[![Image of Land Use Public Comment application](land-use-public-comment.png "Land Use Public Comment application")](http://localgovtemplates2.esri.com/LUPublicComment/default.htm)
+[Try the Land Use Public Comment application](http://tryitlive.arcgis.com/LUPublicComment/)
+
+[![Image of Land Use Public Comment application](land-use-public-comment.png "Land Use Public Comment application")](http://tryitlive.arcgis.com/LUPublicComment/)
 
 ## Features
 
@@ -12,45 +14,27 @@ The Land Use Public Comment application is a configuration of ArcGIS Server and 
 * Submit comments or concerns to the local government
 * Share with social media
 
-## Instructions
-
-### Esri Sample Services
-
-Esri's sample services can be used with this repository to extend the application.
-
-### Your Services
-
-[Detailed help](http://resources.arcgis.com/en/help/localgovernment/10.1/index.html#/What_is_Land_Use_Public_Comment/028s0000000s000000/)
-on the ArcGIS Resource Center can guide you in the setup and configuration of the app with your services.
-
-### General Help
-[New to Github? Get started here.](http://htmlpreview.github.com/?https://github.com/Esri/esri.github.com/blob/master/help/esri-getting-to-know-github.html)
-
 ## Requirements
 
-### Esri Sample Services
+**Start now using Esri-supplied sample services**
 
-* Microsoft ASP.NET Framework 4.0 available from the [Microsoft website](http://www.microsoft.com/en-us/download/details.aspx?id=17851)
+You can start using the application now by setting it up on a web server running Microsoft Internet Information Services (IIS) and using sample services supplied by Esri.
 
-### Your Services
+**Start now using your own services**
 
-* ArcGIS for Desktop 10.2 - Standard or Advanced - [About](http://www.esri.com/software/arcgis/arcgis-for-desktop)
-* ArcGIS for Server 10.2 - Standard or Advanced - [About](http://www.esri.com/software/arcgis/arcgisserver)
-* Local Government Information Model - [About](http://www.arcgis.com/home/item.html?id=ae175b36c4154dda987127dff879350d)
-* Microsoft ASP.NET Framework 4.0 available from the [Microsoft website](http://www.microsoft.com/en-us/download/details.aspx?id=17851)
+For more information on requirements and publication steps, see [Land Use Public Comment](http://solutions.arcgis.com/local-government/help/land-use-public-comment/) help.
 
 ## Resources
+
+Additional [information and sample data](http://www.arcgis.com/home/item.html?id=76671a0cf4954b3bad18ac2ef06346b2) are available for the application.
 
 Learn more about Esri's [ArcGIS for Local Government maps and apps](http://solutions.arcgis.com/local-government/).
 
 Show me a list of other [Local Government GitHub repositories](http://esri.github.io/#Local-Government).
 
-Additional [information and sample data](http://www.arcgis.com/home/item.html?id=76671a0cf4954b3bad18ac2ef06346b2)
-are available for the application.
+This application uses the 3.8 version of [Esri's ArcGIS API for JavaScript](http://help.arcgis.com/en/webapi/javascript/arcgis/); see the site for concepts, samples, and a reference for using the API to create mapping web sites.
 
-This application uses the 3.5 version of
-[Esri's ArcGIS API for JavaScript](http://help.arcgis.com/en/webapi/javascript/arcgis/);
-see the site for concepts, samples, and a reference for using the API to create mapping web sites.
+[New to Github? Get started here.](http://htmlpreview.github.com/?https://github.com/Esri/esri.github.com/blob/master/help/esri-getting-to-know-github.html)
 
 ## Issues
 
@@ -58,27 +42,19 @@ Find a bug or want to request a new feature?  Please let us know by submitting a
 
 ## Contributing
 
-Esri welcomes contributions from anyone and everyone.
-Please see our [guidelines for contributing](https://github.com/esri/contributing).
+Esri welcomes contributions from anyone and everyone. Please see our [guidelines for contributing](https://github.com/esri/contributing).
 
 ## Licensing
 
 Copyright 2013 Esri
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
    http://www.apache.org/licenses/LICENSE-2.0
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-A copy of the license is available in the repository's
-[LICENSE.txt](LICENSE.txt) file.
+A copy of the license is available in the repository's [LICENSE.txt](LICENSE.txt) file.
 
 [](Esri Tags: Local-Government Local Government Land Use Public Comment)
 [](Esri Language: JavaScript)
