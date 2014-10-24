@@ -1,6 +1,0 @@
-Copy of repository https://github.com/Esri/resource-proxy
-commit f1db95ddff6bbef9d5b02200c67123aaf0cb71f1
-Author: Bjorn Svensson <bsvensson@esri.com>
-Date:   Fri Feb 14 15:03:36 2014 -0800
-
-    Add changelog

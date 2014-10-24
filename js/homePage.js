@@ -1,5 +1,6 @@
-﻿/** @license
- | Version 10.2
+﻿/*global */
+/*jslint browser:true,sloppy:true,nomen:true,unparam:true,plusplus:true */
+/*
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -74,7 +75,7 @@ var lastSearchTime; //variable for storing the time of last searched value
 
 //This initialization function is called when the DOM elements are ready
 function init() {
-    esri.config.defaults.io.proxyUrl = "resource-proxy/DotNet/proxy.ashx";
+    esri.config.defaults.io.proxyUrl = "proxy.ashx";
     esriConfig.defaults.io.alwaysUseProxy = false;
     esriConfig.defaults.io.timeout = 180000;
 
