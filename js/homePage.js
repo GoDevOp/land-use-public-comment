@@ -29,7 +29,7 @@ dojo.require("esri.layers.FeatureLayer");
 dojo.require("mobile.InfoWindow");
 dojo.require("js.config");
 dojo.require("js.date");
-dojo.require("dojox.mobile.View");
+
 var map; //variable to store map object
 var isiOS = false; //This variable will be set to 'true' if the application is accessed from iPhone or iPad
 var isBrowser = false; //This variable will be set to 'true' when application is accessed from desktop browsers
