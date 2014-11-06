@@ -15,8 +15,7 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
-dojo.require("dojox.mobile.parser");
-dojo.require("dojox.mobile");
+
 dojo.require("dojo.window");
 dojo.require("dojo.date.locale");
 
