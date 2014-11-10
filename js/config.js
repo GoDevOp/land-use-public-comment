@@ -39,8 +39,6 @@ dojo.declare("js.config", null, {
     // 10. Specify URLs for map sharing               - [ Tag(s) to look for: FacebookShareURL, TwitterShareURL, ShareByMailLink ]
     // 10a.In case of changing the TinyURL service
     //     Specify URL for the new service            - [ Tag(s) to look for: MapSharingOptions (set TinyURLServiceURL, TinyURLResponseAttribute) ]
-
-
     // ------------------------------------------------------------------------------------------------------------------------
     // GENERAL SETTINGS
     // ------------------------------------------------------------------------------------------------------------------------
