@@ -15,6 +15,10 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
+dojo.require("js.commonShare");
+
+var commonShare = null;
+var getTinyUrl = null;
 var orientationChange = false; //variable for setting the flag on orientation
 var tinyResponse; //variable for storing the response getting from tiny URL api
 var tinyUrl; //variable for storing the tiny URL
@@ -1012,8 +1016,10 @@ function SortResultFeatures(a, b) {
 
 //Create the tiny url with current extent and selected feature
 function ShareLink(ext) {
+    if (!commonShare) {
+        commonShare = new js.CommonShare();
+    }
     var timeoutId = null;
-    tinyResponse = null;
     tinyUrl = null;
     mapExtent = GetMapExtent();
 
@@ -1025,49 +1031,24 @@ function ShareLink(ext) {
     else {
         var urlStr = url.path + "?extent=" + mapExtent;
     }
-    urlStr = encodeURIComponent(urlStr);
+    //urlStr = encodeURIComponent(urlStr);
 
-    // Shorten it
-    url = dojo.string.substitute(mapSharingOptions.TinyURLServiceURL, [urlStr]);
-    esri.request({
-        url: url
-    },{
-        useProxy: true
-    }).then(
-        function (response) {
-            if(timeoutId !== null) {
-                clearTimeout(timeoutId);
-                timeoutId = null;
-            }
-            if (response.status_code && response.status_code === 200) {
-                tinyResponse = response.data;
-                tinyUrl = response.data.url;
-                if (ext) {
-                    HideBaseMapLayerContainer();
-                    HideAddressContainer();
-                    var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
+    // Attempt the shrinking of the URL
+    getTinyUrl = commonShare.getTinyLink(urlStr, mapSharingOptions.TinyURLServiceURL);
+               
+    if (ext) {
+        HideBaseMapLayerContainer();
+        HideAddressContainer();
+        var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
 
-                    if (dojo.coords("divAppContainer").h > 0) {
-                        HideShareAppContainer();
-                    }
-                    else {
-                        dojo.byId('divAppContainer').style.height = cellHeight + "px";
-                        dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
-                    }
-                }
-            } else {
-                alert(messages.getElementsByTagName(
-                    "tinyURLEngine")[0].childNodes[0].nodeValue + ": " + response.status_txt);
-            }
+        if (dojo.coords("divAppContainer").h > 0) {
+            HideShareAppContainer();
         }
-    );
-
-    timeoutId = setTimeout(function () {
-        if (!tinyResponse) {
-            alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-            return;
+        else {
+            dojo.byId('divAppContainer').style.height = cellHeight + "px";
+            dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
         }
-    }, 6000);
+    }
 }
 
 //Open login page for facebook,tweet and open Email client with shared link for Email
@@ -1076,23 +1057,8 @@ function Share(site) {
         dojo.replaceClass("divAppContainer", "hideContainerHeight", "showContainerHeight");
         dojo.byId('divAppContainer').style.height = '0px';
     }
-    if (tinyUrl) {
-        switch (site) {
-            case "facebook":
-                window.open(dojo.string.substitute(mapSharingOptions.FacebookShareURL, [tinyUrl]));
-                break;
-            case "twitter":
-                window.open(dojo.string.substitute(mapSharingOptions.TwitterShareURL, [tinyUrl]));
-                break;
-            case "mail":
-                parent.location = dojo.string.substitute(mapSharingOptions.ShareByMailLink, [tinyUrl]);
-                break;
-        }
-    }
-    else {
-        alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-        return;
-    }
+   // Do the share
+    commonShare.share(getTinyUrl, mapSharingOptions, site); 
 }
 
 //Hide share link container
