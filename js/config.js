@@ -233,7 +233,6 @@ dojo.declare("js.config", null, {
     // Set URL for TinyURL service, and URLs for social media
     MapSharingOptions: {
         TinyURLServiceURL: "https://api-ssl.bitly.com/v3/shorten?longUrl=${0}",
-        TinyURLResponseAttribute: "data.url",
         FacebookShareURL: "http://www.facebook.com/sharer.php?u=${0}&t=Public%20Comment",
         TwitterShareURL: "http://mobile.twitter.com/compose/tweet?status=Public%20Comment ${0}",
         ShareByMailLink: "mailto:%20?subject=See%20this%20Public%20Comment%20map!&body=${0}"
