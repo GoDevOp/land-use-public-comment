@@ -74,7 +74,7 @@ var lastSearchTime; //variable for storing the time of last searched value
 
 //This initialization function is called when the DOM elements are ready
 function init() {
-    esri.config.defaults.io.proxyUrl = "proxy.ashx";
+    esri.config.defaults.io.proxyUrl = "proxy/proxy.ashx";
     esriConfig.defaults.io.alwaysUseProxy = false;
     esriConfig.defaults.io.timeout = 180000;
 
