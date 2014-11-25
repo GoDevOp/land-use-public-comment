@@ -1,5 +1,6 @@
-﻿/** @license
- | Version 10.2
+﻿/*global */
+/*jslint browser:true,sloppy:true,nomen:true,unparam:true,plusplus:true */
+/*
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +15,7 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
-dojo.require("dojox.mobile.parser");
-dojo.require("dojox.mobile");
+
 dojo.require("dojo.window");
 dojo.require("dojo.date.locale");
 
@@ -28,7 +28,7 @@ dojo.require("esri.layers.FeatureLayer");
 dojo.require("mobile.InfoWindow");
 dojo.require("js.config");
 dojo.require("js.date");
-dojo.require("dojox.mobile.View");
+
 var map; //variable to store map object
 var isiOS = false; //This variable will be set to 'true' if the application is accessed from iPhone or iPad
 var isBrowser = false; //This variable will be set to 'true' when application is accessed from desktop browsers
@@ -74,7 +74,7 @@ var lastSearchTime; //variable for storing the time of last searched value
 
 //This initialization function is called when the DOM elements are ready
 function init() {
-    esri.config.defaults.io.proxyUrl = "proxy.ashx";
+    esri.config.defaults.io.proxyUrl = "proxy/proxy.ashx";
     esriConfig.defaults.io.alwaysUseProxy = false;
     esriConfig.defaults.io.timeout = 180000;
 

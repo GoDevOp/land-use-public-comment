@@ -1,5 +1,6 @@
-﻿/** @license
- | Version 10.2
+﻿/*global */
+/*jslint browser:true,sloppy:true,nomen:true,unparam:true,plusplus:true */
+/*
  | Copyright 2012 Esri
  |
  | Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,10 @@
  | See the License for the specific language governing permissions and
  | limitations under the License.
  */
+dojo.require("js.commonShare");
+
+var commonShare = null;
+var getTinyUrl = null;
 var orientationChange = false; //variable for setting the flag on orientation
 var tinyResponse; //variable for storing the response getting from tiny URL api
 var tinyUrl; //variable for storing the tiny URL
@@ -714,7 +719,6 @@ function CreateScrollbar(container, content) {
     };
 
     var startPos;
-    var scrollingTimer;
 
     dojo.connect(container, "touchstart", function (evt) {
         touchStartHandler(evt);
@@ -724,46 +728,42 @@ function CreateScrollbar(container, content) {
         touchMoveHandler(evt);
     });
 
-    dojo.connect(container, "touchend", function (evt) {
-        touchEndHandler(evt);
+    dojo.connect(content, "touchstart", function (evt) {
+        // Needed for iOS 8
+    });
+
+    dojo.connect(content, "touchmove", function (evt) {
+        // Needed for iOS 8
     });
 
     //Handlers for Touch Events
+
     function touchStartHandler(e) {
         startPos = e.touches[0].pageY;
     }
 
     function touchMoveHandler(e) {
         var touch = e.touches[0];
-        e.cancelBubble = true;
+        if (e.cancelBubble) e.cancelBubble = true;
         if (e.stopPropagation) e.stopPropagation();
         e.preventDefault();
 
-        pxTop = scrollbar_handle.offsetTop;
-        var y;
-        if (startPos > touch.pageY) {
-            y = pxTop + 10;
+        var change = startPos - touch.pageY;
+        if (change !== 0) {
+            pxTop = scrollbar_handle.offsetTop;
+            var y = pxTop + change;
+
+            //setting scrollbar handle
+            if (y > yMax) y = yMax // Limit vertical movement
+            if (y < 0) y = 0 // Limit vertical movement
+            scrollbar_handle.style.top = y + "px";
+
+            //setting content position
+            content.scrollTop = Math.round(scrollbar_handle.offsetTop / yMax * (content.scrollHeight - content.offsetHeight));
+
+            startPos = touch.pageY;
         }
-        else {
-            y = pxTop - 10;
-        }
-
-        //setting scrollbar handle
-        if (y > yMax) y = yMax // Limit vertical movement
-        if (y < 0) y = 0 // Limit vertical movement
-        scrollbar_handle.style.top = y + "px";
-
-        //setting content position
-        content.scrollTop = Math.round(scrollbar_handle.offsetTop / yMax * (content.scrollHeight - content.offsetHeight));
-
-        scrolling = true;
-        startPos = touch.pageY;
     }
-
-    function touchEndHandler(e) {
-        scrollingTimer = setTimeout(function () { clearTimeout(scrollingTimer); scrolling = false; }, 100);
-    }
-    //stop touch event
 }
 
 //Remove scroll bar
@@ -779,53 +779,53 @@ function ShowMyLocation() {
     HideShareAppContainer();
     HideAddressContainer();
     navigator.geolocation.getCurrentPosition(
-		function (position) {
-		    ShowProgressIndicator();
-		    mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
-		    var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
-		    graphicCollection.addPoint(mapPoint);
-		    geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
-		        for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
-		            if (map.getLayer(baseMapLayers[bMap].Key).visible) {
-		                var bmap = baseMapLayers[bMap].Key;
-		            }
-		        }
-		        if (!map.getLayer(bmap).fullExtent.contains(newPointCollection[0].getPoint(0))) {
-		            mapPoint = null;
-		            selectedMapPoint = null;
-		            featureID = null;
-		            map.getLayer(tempGraphicsLayerId).clear();
-		            map.infoWindow.hide();
-		            HideProgressIndicator();
-		            alert(messages.getElementsByTagName("geoLocation")[0].childNodes[0].nodeValue);
-		            return;
-		        }
-		        mapPoint = newPointCollection[0].getPoint(0);
-		        map.setLevel(locatorSettings.Locators[0].ZoomLevel);
-		        map.centerAt(mapPoint);
-		        var locatorMarkupSymbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
-		        var graphic = new esri.Graphic(mapPoint, locatorMarkupSymbol, { "Locator": true }, null);
-		        map.getLayer(tempGraphicsLayerId).add(graphic);
-		        HideProgressIndicator();
-		    });
-		},
-          	function (error) {
-          	    HideProgressIndicator();
-          	    switch (error.code) {
-          	        case error.TIMEOUT:
-          	            alert(messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.POSITION_UNAVAILABLE:
-          	            alert(messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.PERMISSION_DENIED:
-          	            alert(messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
-          	            break;
-          	        case error.UNKNOWN_ERROR:
-          	            alert(messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
-          	            break;
-          	    }
-          	}, { timeout: 10000 }
+        function (position) {
+            ShowProgressIndicator();
+            mapPoint = new esri.geometry.Point(position.coords.longitude, position.coords.latitude, new esri.SpatialReference({ wkid: 4326 }));
+            var graphicCollection = new esri.geometry.Multipoint(new esri.SpatialReference({ wkid: 4326 }));
+            graphicCollection.addPoint(mapPoint);
+            geometryService.project([graphicCollection], map.spatialReference, function (newPointCollection) {
+                for (var bMap = 0; bMap < baseMapLayers.length; bMap++) {
+                    if (map.getLayer(baseMapLayers[bMap].Key).visible) {
+                        var bmap = baseMapLayers[bMap].Key;
+                    }
+                }
+                if (!map.getLayer(bmap).fullExtent.contains(newPointCollection[0].getPoint(0))) {
+                    mapPoint = null;
+                    selectedMapPoint = null;
+                    featureID = null;
+                    map.getLayer(tempGraphicsLayerId).clear();
+                    map.infoWindow.hide();
+                    HideProgressIndicator();
+                    alert(messages.getElementsByTagName("geoLocation")[0].childNodes[0].nodeValue);
+                    return;
+                }
+                mapPoint = newPointCollection[0].getPoint(0);
+                map.setLevel(locatorSettings.Locators[0].ZoomLevel);
+                map.centerAt(mapPoint);
+                var locatorMarkupSymbol = new esri.symbol.PictureMarkerSymbol(locatorSettings.DefaultLocatorSymbol, locatorSettings.MarkupSymbolSize.width, locatorSettings.MarkupSymbolSize.height);
+                var graphic = new esri.Graphic(mapPoint, locatorMarkupSymbol, { "Locator": true }, null);
+                map.getLayer(tempGraphicsLayerId).add(graphic);
+                HideProgressIndicator();
+            });
+        },
+            function (error) {
+                HideProgressIndicator();
+                switch (error.code) {
+                    case error.TIMEOUT:
+                        alert(messages.getElementsByTagName("geolocationTimeout")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert(messages.getElementsByTagName("geolocationPositionUnavailable")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.PERMISSION_DENIED:
+                        alert(messages.getElementsByTagName("geolocationPermissionDenied")[0].childNodes[0].nodeValue);
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        alert(messages.getElementsByTagName("geolocationUnKnownError")[0].childNodes[0].nodeValue);
+                        break;
+                }
+            }, { timeout: 10000 }
        );
 }
 
@@ -1016,51 +1016,39 @@ function SortResultFeatures(a, b) {
 
 //Create the tiny url with current extent and selected feature
 function ShareLink(ext) {
+    if (!commonShare) {
+        commonShare = new js.CommonShare();
+    }
+    var timeoutId = null;
     tinyUrl = null;
     mapExtent = GetMapExtent();
+
+    // Encode the URL as a component
     var url = esri.urlToObject(windowURL);
     if (featureID) {
-        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent + "$featureID=" + featureID;
+        var urlStr = url.path + "?extent=" + mapExtent + "$featureID=" + featureID;
     }
     else {
-        var urlStr = encodeURI(url.path) + "?extent=" + mapExtent;
+        var urlStr = url.path + "?extent=" + mapExtent;
     }
-    url = dojo.string.substitute(mapSharingOptions.TinyURLServiceURL, [urlStr]);
+    //urlStr = encodeURIComponent(urlStr);
 
-    dojo.io.script.get({
-        url: url,
-        callbackParamName: "callback",
-        load: function (data) {
-            tinyResponse = data;
-            tinyUrl = data;
-            var attr = mapSharingOptions.TinyURLResponseAttribute.split(".");
-            for (var x = 0; x < attr.length; x++) {
-                tinyUrl = tinyUrl[attr[x]];
-            }
-            if (ext) {
-                HideBaseMapLayerContainer();
-                HideAddressContainer();
-                var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
+    // Attempt the shrinking of the URL
+    getTinyUrl = commonShare.getTinyLink(urlStr, mapSharingOptions.TinyURLServiceURL);
+               
+    if (ext) {
+        HideBaseMapLayerContainer();
+        HideAddressContainer();
+        var cellHeight = (isMobileDevice || isTablet) ? 81 : 60;
 
-                if (dojo.coords("divAppContainer").h > 0) {
-                    HideShareAppContainer();
-                }
-                else {
-                    dojo.byId('divAppContainer').style.height = cellHeight + "px";
-                    dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
-                }
-            }
-        },
-        error: function (error) {
-            alert(tinyResponse.error);
+        if (dojo.coords("divAppContainer").h > 0) {
+            HideShareAppContainer();
         }
-    });
-    setTimeout(function () {
-        if (!tinyResponse) {
-            alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-            return;
+        else {
+            dojo.byId('divAppContainer').style.height = cellHeight + "px";
+            dojo.replaceClass("divAppContainer", "showContainerHeight", "hideContainerHeight");
         }
-    }, 6000);
+    }
 }
 
 //Open login page for facebook,tweet and open Email client with shared link for Email
@@ -1069,23 +1057,8 @@ function Share(site) {
         dojo.replaceClass("divAppContainer", "hideContainerHeight", "showContainerHeight");
         dojo.byId('divAppContainer').style.height = '0px';
     }
-    if (tinyUrl) {
-        switch (site) {
-            case "facebook":
-                window.open(dojo.string.substitute(mapSharingOptions.FacebookShareURL, [tinyUrl]));
-                break;
-            case "twitter":
-                window.open(dojo.string.substitute(mapSharingOptions.TwitterShareURL, [tinyUrl]));
-                break;
-            case "mail":
-                parent.location = dojo.string.substitute(mapSharingOptions.ShareByMailLink, [tinyUrl]);
-                break;
-        }
-    }
-    else {
-        alert(messages.getElementsByTagName("tinyURLEngine")[0].childNodes[0].nodeValue);
-        return;
-    }
+   // Do the share
+    commonShare.share(getTinyUrl, mapSharingOptions, site); 
 }
 
 //Hide share link container
