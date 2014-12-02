@@ -56,5 +56,5 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 A copy of the license is available in the repository's [LICENSE.txt](LICENSE.txt) file.
 
-[](Esri Tags: Local-Government Local Government Land Use Public Comment)
+[](Esri Tags: ArcGISSolutions Local-Government Local Government Land Use Public Comment)
 [](Esri Language: JavaScript)
