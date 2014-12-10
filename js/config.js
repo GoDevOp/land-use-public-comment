@@ -185,7 +185,7 @@ dojo.declare("js.config", null, {
             LocatorFieldValues: ["USA.StreetName", "USA.PointAddress", "USA.StreetAddress"]
         }, {
             DisplayText: "Case Name",
-            DefaultValue: "Naperville",
+            DefaultValue: "Naper",
             QueryString: "CASENAME like '%${0}%'",
             DisplayField: "${CASENAME}"
         }]
