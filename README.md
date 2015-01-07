@@ -19,6 +19,7 @@ Land Use Public Comment can be used by planning and zoning, building, or other l
 **Start now using Esri-supplied sample services**
 
 You can start using the application now by setting it up on a web server running Microsoft Internet Information Services (IIS) and using sample services supplied by Esri.
+You'll need to convert to an application in IIS and use the ASP .NET 4.0. application pool.
 
 **Start now using your own services**
 
@@ -26,7 +27,7 @@ For more information on requirements and publication steps, see [Land Use Public
 
 ## Resources
 
-Additional [information and sample data](http://www.arcgis.com/home/item.html?id=76671a0cf4954b3bad18ac2ef06346b2) are available for the application.
+Additional [information and sample data](http://www.arcgis.com/home/item.html?id=7113ff6a39de4be6adc21834ac3ba94e) are available for the application.
 
 Learn more about Esri's [ArcGIS for Local Government maps and apps](http://solutions.arcgis.com/local-government/).
 
