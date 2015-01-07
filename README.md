@@ -4,9 +4,9 @@ Land Use Public Comment is a configuration of ArcGIS and a JavaScript applicatio
 
 Land Use Public Comment can be used by planning and zoning, building, or other local government organizations to deliver a web-based public comment application. This application provides 24/7 access to an organization and typically supplements statutory public notice requirements.
 
-[Try the Land Use Public Comment application](http://tryitlive.arcgis.com/LUPublicComment/)
+[Try the Land Use Public Comment application](http://links.esri.com/localgovernment/tryit/LandUsePublicComment/)
 
-[![Image of Land Use Public Comment application](land-use-public-comment.png "Land Use Public Comment application")](http://tryitlive.arcgis.com/LUPublicComment/)
+[![Image of Land Use Public Comment application](land-use-public-comment.png "Land Use Public Comment application")](http://links.esri.com/localgovernment/tryit/LandUsePublicComment/)
 
 ## Features
 
@@ -22,7 +22,7 @@ You can start using the application now by setting it up on a web server running
 
 **Start now using your own services**
 
-For more information on requirements and publication steps, see [Land Use Public Comment](http://solutions.arcgis.com/local-government/help/land-use-public-comment/) help.
+For more information on requirements and publication steps, see [Land Use Public Comment](http://links.esri.com/localgovernment/help/10.2/LandUsePublicComment) help.
 
 ## Resources
 
@@ -32,7 +32,7 @@ Learn more about Esri's [ArcGIS for Local Government maps and apps](http://solut
 
 Show me a list of other [Local Government GitHub repositories](http://esri.github.io/#Local-Government).
 
-This application uses the 3.8 version of [Esri's ArcGIS API for JavaScript](http://help.arcgis.com/en/webapi/javascript/arcgis/); see the site for concepts, samples, and a reference for using the API to create mapping web sites.
+This application uses the 3.11 version of [Esri's ArcGIS API for JavaScript](http://help.arcgis.com/en/webapi/javascript/arcgis/); see the site for concepts, samples, and a reference for using the API to create mapping web sites.
 
 [New to Github? Get started here.](http://htmlpreview.github.com/?https://github.com/Esri/esri.github.com/blob/master/help/esri-getting-to-know-github.html)
 
