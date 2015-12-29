@@ -1,6 +1,6 @@
 # land-use-public-comment
 
-***This land use public comment repo has been replaced by the [Crowdsource Polling repo](https://github.com/Esri/crowdsource-polling), applications built from this repo are in mature support***
+***This land use public comment repo has been replaced by the [Crowdsource Polling repo](https://github.com/Esri/crowdsource-polling), applications built from this repo are in mature support. Check out the new [Public Comment](http://solutions.arcgis.com/local-government/help/public-comment/) solution***
 
 Land Use Public Comment is a configuration of ArcGIS and a JavaScript application that allows the general public and other interested parties to comment on proposed land-use cases being heard by their local government from a smartphone, tablet, and desktop computer.
 
